@@ -51,8 +51,10 @@ def download(url: str, md5: str) -> Path:
 
 
 def bcftools(*args: str) -> str:
-    """Run bcftools and return its output."""
-    return subprocess.run(["bcftools", *args], capture_output=True, text=True, check=True).stdout
+    """Run bcftools in the cache folder: htslib saves remote indexes (.tbi) in the cwd."""
+    CACHE.mkdir(parents=True, exist_ok=True)
+    run = subprocess.run(["bcftools", *args], capture_output=True, text=True, check=True, cwd=CACHE)
+    return run.stdout
 
 
 def write_rna(expression: pd.DataFrame, people: list[str]) -> Path:

@@ -1,6 +1,6 @@
 # CLAUDE.md: conventions for this repo
 
-This is a multi-omics pipeline prototype built as a data-engineering exercise. The brief is in `docs/*.pdf` and the design is in `docs/architecture.md`.
+This is a multi-omics pipeline prototype built as a data-engineering exercise. The brief is kept locally in `docs/*.pdf` (git-ignored, never commit it) and the design is in `docs/architecture.md`.
 The whole repo must be explainable in a **1-hour walkthrough**.
 
 ## Principles
