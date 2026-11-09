@@ -2,7 +2,7 @@
 
 RNA: Geuvadis gene expression (E-GEUV-1, RPKM, lymphoblastoid cell lines of 1000 Genomes
 individuals). DNA: 1000 Genomes phase 3 genotypes for a few variants, sliced remotely with
-bcftools. The same 60 individuals are relabelled to our biobank aliquot IDs (a documented
+bcftools. The same PEOPLE individuals are relabelled to our biobank aliquot IDs (a documented
 simulation step), so the DNA -> RNA link in the demo is real biology.
 Run: docker compose run --rm tools python scripts/fetch_open_data.py
 """
@@ -35,7 +35,7 @@ GENES = {"ERAP2": "ENSG00000164308", "TNF": "ENSG00000232810", "IL6": "ENSG00000
          "IL10": "ENSG00000136634", "CRP": "ENSG00000132693"}  # fmt: skip
 EXTRA_GENES = 95  # most variable genes on top: bulk data that only lands in curated/
 VARIANTS = ["rs2248374", "rs1205", "rs1800629", "rs1800795", "rs1800896"]
-PEOPLE = 60
+PEOPLE = 100  # P001-P060: observational studies; P061-P100: the IBD-04 trial
 
 
 def download(url: str, md5: str) -> Path:
@@ -58,7 +58,7 @@ def bcftools(*args: str) -> str:
 
 
 def write_rna(expression: pd.DataFrame, people: list[str]) -> Path:
-    """Write the RNA lab's delivery: panel + most variable genes x 60 relabelled samples.
+    """Write the RNA lab's delivery: panel + most variable genes x PEOPLE relabelled samples.
 
     Values are Geuvadis' normalized expression (RPKM after PEER-factor correction, the input
     of their eQTL mapping), so they can be slightly negative: the unit is called nRPKM.
@@ -83,7 +83,7 @@ def write_rna(expression: pd.DataFrame, people: list[str]) -> Path:
 
 
 def write_dna(people: list[str]) -> Path:
-    """Write the DNA lab's delivery: a minimal VCF (GT only) for VARIANTS x 60 samples."""
+    """Write the DNA lab's delivery: a minimal VCF (GT only) for VARIANTS x PEOPLE samples."""
     records = []
     for rsid in VARIANTS:
         hit = json.load(urllib.request.urlopen(ENSEMBL.format(rsid)))["mappings"][0]

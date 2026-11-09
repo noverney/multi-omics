@@ -33,7 +33,10 @@ def ref() -> Reference:
         for r in csv.DictReader((folder / "units.csv").open())
     }
     studies = frozenset(r["study_id"] for r in csv.DictReader((folder / "studies.csv").open()))
-    return Reference(concepts, conversions, studies)
+    arms = frozenset(
+        (r["study_id"], r["armcd"]) for r in csv.DictReader((folder / "arms.csv").open())
+    )
+    return Reference(concepts, conversions, studies, arms)
 
 
 @pytest.fixture(scope="session")

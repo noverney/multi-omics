@@ -1,0 +1,9 @@
+study_id,armcd,arm,arm_type,drug
+CARDIO-01,CASE,Cardiovascular disease,CASE,
+CARDIO-01,CONTROL,Healthy control,CONTROL,
+RA-02,CASE,Rheumatoid arthritis,CASE,
+RA-02,CONTROL,Healthy control,CONTROL,
+IBD-03,CASE,Inflammatory bowel disease,CASE,
+IBD-03,CONTROL,Healthy control,CONTROL,
+IBD-04,PBO,Placebo,PLACEBO,
+IBD-04,OMX101,OMX-101 100 mg once daily,TREATMENT,drug:OMX-101

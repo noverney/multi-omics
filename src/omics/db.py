@@ -20,11 +20,12 @@ ROLES = {
 
 # Reference CSV -> (table, primary key), in foreign-key order.
 REFERENCE = [
-    ("studies.csv", "core.study", ["study_id"]),
-    ("concepts.csv", "core.concept", ["concept_id"]),
-    ("units.csv", "core.unit_conversion", ["from_unit", "to_unit"]),
     ("ontology_nodes.csv", "core.ontology_node", ["node_id"]),
     ("ontology_edges.csv", "core.ontology_edge", ["src", "rel", "dst"]),
+    ("studies.csv", "core.study", ["study_id"]),
+    ("arms.csv", "core.study_arm", ["study_id", "armcd"]),
+    ("concepts.csv", "core.concept", ["concept_id"]),
+    ("units.csv", "core.unit_conversion", ["from_unit", "to_unit"]),
 ]
 
 

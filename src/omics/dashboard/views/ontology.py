@@ -4,10 +4,12 @@ import streamlit as st
 
 from omics.dashboard.data import sql, table
 
-SHAPES = {"variant": "ellipse", "gene": "box", "protein": "hexagon", "test": "note"}
+SHAPES = {"variant": "ellipse", "gene": "box", "protein": "hexagon", "test": "note",
+          "drug": "diamond", "disease": "octagon"}  # fmt: skip
 
 st.title("Ontology")
-st.caption("Kinds are told apart by shape: variant ⬭ · gene ▭ · protein ⬡ · test (note).")
+st.caption("Kinds are told apart by shape: variant ⬭ · gene ▭ · protein ⬡ · test (note) ·"
+           " drug ◇ · disease (octagon).")  # fmt: skip
 edges = sql("SELECT * FROM api.ontology_edges ORDER BY src_kind, src, rel, dst")
 lines = [
     "digraph { rankdir=LR; nodesep=0.15;",

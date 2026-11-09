@@ -5,7 +5,10 @@ These are strict definitions as the system uses them. Each term names the table 
 ```mermaid
 flowchart LR
   study["Study<br/>STUDYID"] -->|enrolls| participant["Participant<br/>USUBJID"]
-  participant -->|in arm| arm["Arm<br/>CASE / CONTROL"]
+  study -->|studies| disease["Disease<br/>MONDO"]
+  participant -->|in arm| arm["Arm<br/>ARMCD: CASE · CONTROL · PBO · OMX101"]
+  arm -->|administers| drug["Drug<br/>OMX-101 (fictional)"]
+  drug -->|targets| protein
   participant -->|attends| encounter["Encounter<br/>visit"]
   encounter -->|produces| sample["Sample<br/>biobank ID"]
   sample -->|measured by| test["Test / assay<br/>LOINC · UniProt"]
@@ -23,7 +26,10 @@ flowchart LR
 | **Study** | A clinical protocol with its own participants and arms | `core.study` |
 | **Participant** | One enrolled person, known only by a pseudonymous ID (`P001`) | `core.participant` |
 | **USUBJID** | CDISC unique subject ID, `STUDYID-SUBJID` (`CARDIO-01-P001`) | `core.participant.usubjid` |
-| **Arm** | The study group a participant belongs to: `CASE` or `CONTROL` | `core.participant.arm` |
+| **Arm** | The study group a participant belongs to, by code (`ARMCD`): `CASE`/`CONTROL` in observational studies, `PBO`/`OMX101` in the trial | `core.study_arm`, `core.participant.arm` |
+| **Placebo** | An inactive treatment given to the reference arm of a trial, so the drug's effect can be told apart from time and expectation | arm `PBO` (IBD-04) |
+| **Visit** | A protocol timepoint at which samples are taken (`BASELINE`, `WEEK 12`) | `core.sample.visit`, SDTM `VISIT` |
+| **Stratified randomization** | Randomizing separately within subgroups (here rs2248374 G/G vs A carriers) so both arms get a fair share of each | `scripts/generate_synthetic.py` |
 | **Encounter** | One visit; vital signs and samples are taken at encounters | `encounter_id` |
 | **Sample** | A physical specimen with a global biobank ID (`S100`); it belongs to exactly one participant | `core.sample` |
 | **Operational master** | The system that owns an identity: CTMS for participants, the biobank for samples | contracts `ctms_enrollment`, `biobank_samples` |
@@ -43,6 +49,9 @@ flowchart LR
 | **Lineage** | The path from a published value back to its raw row and file | `api.lineage` |
 | **Contract** | One YAML file per source: column maps per version, natural key, code map | `contracts/*.yaml` |
 | **eQTL** | A genetic variant associated with a gene's expression level | `research.eqtl` |
+| **pQTL** | A genetic variant associated with a protein's level (rs2248374 for ERAP2) | Olink `NPX_ERAP2` vs genotype |
+| **NMD** | Nonsense-mediated decay: the cell destroys an mRNA with a premature stop, so no protein is made | why rs2248374 G/G has no ERAP2 |
+| **Expresser** | In IBD-04: a participant with at least one rs2248374-A allele, who makes ERAP2 | genotype `STRESC` ≠ `G/G` |
 | **Dosage** | Number of ALT alleles in a genotype call: 0, 1 or 2 | GF `STRESN` |
 | **nRPKM** | Geuvadis expression: reads per kilobase per million, PEER-normalized | expression concepts |
 | **Curated** | Full omics files kept as Parquet in S3, outside Postgres | `s3://curated/` |

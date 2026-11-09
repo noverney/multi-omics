@@ -1,6 +1,6 @@
 -- Published contract: consumers (API, analysis, monitor) read these views, never the tables.
 -- Re-created on every init; grants are re-applied afterwards by 900_grants.sql.
-DROP VIEW IF EXISTS api.samples, api.ontology_edges,
+DROP VIEW IF EXISTS api.samples, api.ontology_edges, api.study_arms,
     api.research_findings, api.lineage, api.quarantine, api.files,
     api.sdtm_findings, api.sdtm_dm, api.participant_hold,
     api.measurement_history, api.measurement_current CASCADE;
@@ -48,6 +48,7 @@ SELECT p.study_id                               AS "STUDYID",
        s.specimen                               AS "SPEC",
        CASE WHEN c.vocabulary = 'LOINC' THEN c.code END AS "LOINC",
        m.sample_id                              AS "REFID",
+       s.visit                                  AS "VISIT",
        m.observed_at                            AS "DTC",
        jsonb_build_object('QCFLAG', m.qc_flag, 'RUNDTC', m.run_date::text,
                           'VOCAB', c.vocabulary || ':' || c.code) AS "SUPP",
@@ -60,16 +61,24 @@ LEFT JOIN core.sample s USING (sample_id);
 
 -- CDISC SDTM demographics: no names, no birth dates (pseudonymous USUBJID only).
 CREATE VIEW api.sdtm_dm AS
-SELECT study_id         AS "STUDYID",
-       'DM'             AS "DOMAIN",
-       usubjid          AS "USUBJID",
-       participant_id   AS "SUBJID",
-       arm              AS "ARM",
-       sex              AS "SEX",
-       age              AS "AGE",
-       'YEARS'          AS "AGEU",
-       enrolled_on::text AS "RFICDTC"
-FROM core.participant;
+SELECT p.study_id         AS "STUDYID",
+       'DM'               AS "DOMAIN",
+       p.usubjid          AS "USUBJID",
+       p.participant_id   AS "SUBJID",
+       p.arm              AS "ARMCD",
+       a.arm              AS "ARM",
+       p.sex              AS "SEX",
+       p.age              AS "AGE",
+       'YEARS'            AS "AGEU",
+       p.enrolled_on::text AS "RFICDTC"
+FROM core.participant p
+JOIN core.study_arm a ON a.study_id = p.study_id AND a.armcd = p.arm;
+
+-- Trial design: the arms of each study, their role and the drug given (like SDTM TA).
+CREATE VIEW api.study_arms AS
+SELECT study_id AS "STUDYID", armcd AS "ARMCD", arm AS "ARM", arm_type AS "ARMTYPE",
+       drug AS "DRUG"
+FROM core.study_arm;
 
 -- What research may analyse: no participant on hold, no assay QC failure. Enforced here,
 -- in the data layer, so no consumer can forget the rule.
@@ -106,7 +115,7 @@ FROM ops.ingest_file;
 
 -- Which participant each (pseudonymous) sample aliquot belongs to.
 CREATE VIEW api.samples AS
-SELECT s.sample_id, p.usubjid, s.specimen, s.collected_at
+SELECT s.sample_id, p.usubjid, s.specimen, s.collected_at, s.visit
 FROM core.sample s
 JOIN core.participant p USING (participant_id);
 

@@ -15,6 +15,7 @@ from omics import contracts, settings
 from omics.cli import GOLDEN, SCENARIO, checksum, scenario_files, settle
 
 API = "http://api:8000"
+OPEN_PEOPLE = len((settings.ROOT / "data/open/sample_map.csv").read_text().splitlines()) - 1
 RESEARCH, OPS = {"X-API-Key": "research-key-dev"}, {"X-API-Key": "ops-key-dev"}
 P001_LAB_B = "304a94fc-27af-5a29-9bde-fecfed02ae04"  # uuid5(lab_b, S200, HSCRP)
 CHECKS = []
@@ -34,6 +35,11 @@ def one(sql: str, *params):
     """Run a query and return its first row."""
     with psycopg.connect(settings.DB_DSN) as conn:
         return conn.execute(sql, params).fetchone()
+
+
+def case_control_studies() -> int:
+    """How many studies have a case and a control arm (the classifier runs on those)."""
+    return one("SELECT count(DISTINCT study_id) FROM core.study_arm WHERE arm_type = 'CASE'")[0]
 
 
 @check("Idempotency")
@@ -160,14 +166,16 @@ def access_control():
 @check("Analysis consumer")
 def analysis_consumer():
     """Prove research gets every participant except the one on hold, plus a model per study."""
-    (people, p014) = one(
-        "SELECT count(*), count(*) FILTER (WHERE usubjid LIKE '%%-P014')"
-        " FROM research.participant_features"
+    (people, p014, allowed) = one(
+        "SELECT count(*), count(*) FILTER (WHERE usubjid LIKE '%%-P014'), (SELECT count(*)"
+        " FROM core.participant WHERE participant_id NOT IN"
+        " (SELECT participant_id FROM api.participant_hold)) FROM research.participant_features"
     )
     (studies, worst) = one("SELECT count(*), min(auc) FROM research.model_score")
-    return people == 59 and p014 == 0 and studies == 3 and worst >= 0.75, (
-        f"features for {people} participants (P014 on hold, excluded); "
-        f"case/control ROC AUC >= {worst:.2f} in all {studies} studies"
+    passed = people == allowed and p014 == 0 and studies == case_control_studies()
+    return passed and worst >= 0.75, (
+        f"features for {people}/{allowed} participants not on hold (P014 excluded); "
+        f"case/control ROC AUC >= {worst:.2f} in all {studies} case/control studies"
     )
 
 
@@ -210,12 +218,12 @@ def monitoring():
 def consumers_caught_up(timeout: float = 120) -> None:
     """Wait until both consumers have processed the scenario (they run asynchronously)."""
     deliveries = len([p for p in SCENARIO.glob("*/d*/*") if p.is_file()])
-    deadline = time.monotonic() + timeout
+    expected_models, deadline = case_control_studies(), time.monotonic() + timeout
     while time.monotonic() < deadline:
         (models,) = one("SELECT count(*) FROM research.model_score")
         (uploads,) = one("SELECT count(*) FROM monitor.event_log WHERE topic = 'lab.uploads'")
         (eqtls,) = one("SELECT count(*) FROM research.eqtl")
-        if models == 3 and uploads == deliveries and eqtls > 0:
+        if models == expected_models and uploads == deliveries and eqtls > 0:
             return
         time.sleep(3)
 
@@ -230,13 +238,41 @@ def multi_omics():
     row = one(
         "SELECT n, r, p_value FROM research.eqtl WHERE variant = 'rs2248374' AND gene = 'ERAP2'"
     )
-    passed = people == 60 and row is not None and float(row[1]) < -0.5 and row[2] < 1e-4
+    passed = people == OPEN_PEOPLE and row is not None and float(row[1]) < -0.5 and row[2] < 1e-4
     found = (
         f"ERAP2 ~ rs2248374: r = {float(row[1]):.2f}, p = {row[2]:.0e}, n = {row[0]}"
         if row
         else "no eQTL"
     )
     return passed, f"genotypes + expression for {people} participants; {found}"
+
+
+DRUG_RESPONSE_SQL = """
+WITH crp AS (SELECT "USUBJID", "VISIT", "STRESN" FROM api.research_findings
+             WHERE "STUDYID" = 'IBD-04' AND concept_id = 'CRP'),
+change AS (SELECT b."USUBJID", w."STRESN" / b."STRESN" AS ratio FROM crp b
+           JOIN crp w ON w."USUBJID" = b."USUBJID" AND w."VISIT" = 'WEEK 12'
+           WHERE b."VISIT" = 'BASELINE'),
+genotype AS (SELECT "USUBJID", "STRESC" FROM api.research_findings
+             WHERE concept_id = 'GT_RS2248374')
+SELECT dm."ARMCD" || CASE WHEN g."STRESC" = 'G/G' THEN ' G/G' ELSE ' carrier' END,
+       count(*), percentile_cont(0.5) WITHIN GROUP (ORDER BY c.ratio)
+FROM change c JOIN api.sdtm_dm dm USING ("USUBJID") JOIN genotype g USING ("USUBJID")
+GROUP BY 1"""
+
+
+@check("Drug response")
+def drug_response():
+    """Prove the trial answers 'did my drug work?': yes, but only where ERAP2 is made."""
+    with psycopg.connect(settings.DB_DSN) as conn:
+        groups = {name: (n, ratio) for name, n, ratio in conn.execute(DRUG_RESPONSE_SQL)}
+    drug, placebo, gg = groups["OMX101 carrier"], groups["PBO carrier"], groups["OMX101 G/G"]
+    passed = drug[1] < 0.6 and placebo[1] > 0.75 and gg[1] > 0.75
+    return passed, (
+        f"CRP week 12 / baseline: OMX-101 x{drug[1]:.2f} in rs2248374-A carriers (n={drug[0]})"
+        f" vs placebo x{placebo[1]:.2f} (n={placebo[0]}); OMX-101 in G/G x{gg[1]:.2f}"
+        f" (n={gg[0]}): no ERAP2, no effect"
+    )
 
 
 @check("Determinism")

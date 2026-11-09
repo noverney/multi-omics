@@ -6,7 +6,7 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from omics.dashboard.data import ARM_COLORS, INK, SERIES, sql, style, table
+from omics.dashboard.data import INK, ROLE_COLORS, SERIES, arm_roles, sql, style, table
 
 LABELS = {
     "CRP": "Serum CRP, mg/L (Lab A)",
@@ -15,6 +15,7 @@ LABELS = {
     "NPX_TNF": "Olink TNF, NPX",
     "NPX_IL6": "Olink IL6, NPX",
     "NPX_IL10": "Olink IL10, NPX",
+    "NPX_ERAP2": "Olink ERAP2, NPX",
     "HR": "Heart rate, /min",
     "SYSBP": "Systolic BP, mm[Hg]",
     "WEIGHT": "Weight, kg",
@@ -28,6 +29,7 @@ if raw.empty:
     st.info("No research features yet: run `make simulate`.")
     st.stop()
 data = pd.concat([raw.drop(columns="features"), pd.json_normalize(raw.features)], axis=1)
+data["role"] = data.arm.map(arm_roles())
 
 st.subheader("Case vs control classifier (logistic regression, 5-fold CV)")
 models = sql("SELECT study_id, auc, n, coefficients::text AS weights FROM research.model_score")
@@ -36,10 +38,10 @@ for column, model in zip(st.columns(len(models)), models.itertuples(), strict=Tr
 table(models, "Model weights (standardized)")
 
 feature = st.selectbox("Measure", [f for f in LABELS if f in data], format_func=LABELS.get)
-order = {"arm": ["CONTROL", "CASE"], "study_id": sorted(data.study_id.unique())}
+order = {"role": list(ROLE_COLORS), "study_id": sorted(data.study_id.unique())}
 fig = px.box(
-    data, x="study_id", y=feature, color="arm", points="all", color_discrete_map=ARM_COLORS,
-    category_orders=order, hover_data=["usubjid"],
+    data, x="study_id", y=feature, color="role", points="all", color_discrete_map=ROLE_COLORS,
+    category_orders=order, hover_data=["usubjid", "arm"],
 )  # fmt: skip
 fig.update_traces(marker=MARKER, line={"width": 2})
 fig.update_layout(xaxis_title=None, yaxis_title=LABELS[feature], boxgap=0.3)

@@ -23,3 +23,6 @@ gene:ERAP2,measured_by,test:EXPR_ERAP2
 gene:TNF,measured_by,test:EXPR_TNF
 gene:IL6,measured_by,test:EXPR_IL6
 gene:IL10,measured_by,test:EXPR_IL10
+gene:ERAP2,encodes,protein:Q6P179
+protein:Q6P179,measured_by,test:NPX_ERAP2
+drug:OMX-101,targets,protein:Q6P179

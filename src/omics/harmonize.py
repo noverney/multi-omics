@@ -49,11 +49,12 @@ def content_hash(row: dict) -> str:
 
 @dataclass(frozen=True)
 class Reference:
-    """Reference data: concepts (units, ranges), unit conversions and known studies."""
+    """Reference data: concepts (units, ranges), unit conversions, studies and their arms."""
 
     concepts: dict[str, Concept]
     conversions: dict[tuple[str, str], Decimal]
     studies: frozenset[str]
+    arms: frozenset[tuple[str, str]]  # (study_id, armcd), e.g. ("IBD-04", "PBO")
 
 
 @dataclass(frozen=True)
@@ -218,8 +219,10 @@ def enrollment(f: dict, contract: Contract, ref: Reference, masters: Masters, ou
     if study_id not in ref.studies:
         raise Issue("UNKNOWN_STUDY", f"{study_id!r} is not a registered study")
     arm, sex = clean(f.get("arm")).upper(), clean(f.get("sex")).upper()[:1] or "U"
-    if arm not in ("CASE", "CONTROL") or sex not in ("F", "M", "U"):
-        raise Issue("BAD_VALUE", f"arm {arm!r} / sex {sex!r} not in the allowed values")
+    if (study_id, arm) not in ref.arms:
+        raise Issue("BAD_VALUE", f"arm {arm!r} is not an arm of {study_id}")
+    if sex not in ("F", "M", "U"):
+        raise Issue("BAD_VALUE", f"sex {sex!r} not in the allowed values")
     age = parse_decimal(f.get("age"))
     if not 0 <= age <= 120:
         raise Issue("OUT_OF_RANGE", f"age {age} is outside [0, 120]")
@@ -247,6 +250,7 @@ def sample(f: dict, contract: Contract, ref: Reference, masters: Masters, out: O
         "specimen": clean(f.get("specimen")).upper(),
         "collected_at": parse_dtc(f.get("collected_at")),
         "encounter_id": clean_id(f.get("encounter_id")) or None,
+        "visit": clean(f.get("visit")).upper() or None,  # v1 manifests have no visit
     }
     if participant_id not in masters.participants:
         raise Issue("UNRESOLVED_PARTICIPANT", f"{participant_id} not enrolled yet", retryable=True)

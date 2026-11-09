@@ -6,10 +6,10 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 | --- | --- | --- |
 | 0–5 | The brief and its traps: the same person under 3 column names, 3200 ug/L = 3.2 mg/L, Olink linked only via the sample, NPX never converted | [architecture.md](architecture.md), deck slides 1–3 |
 | 5–10 | Architecture: Kafka for messages, S3 for data; one upload end to end | the system and sequence diagrams |
-| 10–20 | **Live run**: `make demo`. While it runs, open the Redpanda Console (topics, 3 brokers), Prefect (flow runs, retries) and SeaweedFS (raw files by sha256) | `make demo` output: 14 ✅ + replay |
+| 10–20 | **Live run**: `make demo`. While it runs, open the Redpanda Console (topics, 3 brokers), Prefect (flow runs, retries) and SeaweedFS (raw files by sha256) | `make demo` output: 15 ✅ + replay |
 | 20–32 | **Code tour**, about 2 minutes per file | see "Code, in reading order" below |
 | 32–40 | **What can be queried**: API with a research vs an ops key; the lineage of one value; dashboard pages | <http://localhost:8000/docs>, <http://localhost:8501> |
-| 40–48 | **Resilience**: chaos timeline and result, the golden checksum, replay, order independence (1261 rows waited, same checksum) | `make chaos` output |
+| 40–48 | **Resilience**: chaos timeline and result, the golden checksum, replay, order independence (over 1000 rows waited, same checksum) | `make chaos` output |
 | 48–54 | **Multi-omics**: real DNA + RNA, ERAP2 eQTL, ontology graph, curated Parquet + Dask | dashboard Analysis + Ontology pages |
 | 54–60 | Tradeoffs, omissions, scale path | [decisions.md](decisions.md) |
 
@@ -36,4 +36,5 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 | Schema evolution | contract versions chosen by header; unknown columns kept | Lab B v2 loads; unknown header → FAILED alone |
 | Replayability | immutable raw/, deterministic ids | `make replay`: identical checksum |
 | Security | roles, research view, audit log, S3 identities | 401/403, P014 hidden from research |
+| Did the drug work? | IBD-04 trial: arms, `VISIT`, ERAP2 protein; `DRUG_RESPONSE_SQL` in `scripts/demo.py` | CRP ×0.42 on OMX-101 if ERAP2 is made, ×0.84 placebo, ×1.02 in G/G |
 | Scale | partitions, consumers, lakehouse path | [decisions.md](decisions.md#scale-path) |

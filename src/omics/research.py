@@ -5,7 +5,7 @@ import pandas as pd
 from scipy import stats
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import StratifiedKFold, cross_val_score
+from sklearn.model_selection import RepeatedStratifiedKFold, cross_val_score
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import StandardScaler
 
@@ -36,15 +36,20 @@ def outliers(features: pd.DataFrame, groups: pd.Series) -> pd.DataFrame:
 
 
 def case_control_auc(features: pd.DataFrame, is_case: pd.Series) -> tuple[float, dict]:
-    """Cross-validated ROC AUC of a logistic regression (case vs control) and its weights."""
+    """Cross-validated ROC AUC of a logistic regression (case vs control) and its weights.
+
+    The AUC is averaged over 10 repeats of stratified 5-fold CV: with ~20 people a single
+    split is noisy, and the average does not hinge on how one shuffle fell.
+    """
     x = features.reindex(columns=MODEL_FEATURES)
     model = make_pipeline(
         SimpleImputer(strategy="median", keep_empty_features=True),
         StandardScaler(),
         LogisticRegression(max_iter=1000),
     )
-    folds = StratifiedKFold(n_splits=min(5, int(is_case.value_counts().min())), shuffle=True,
-                            random_state=0)  # fmt: skip
+    folds = RepeatedStratifiedKFold(
+        n_splits=min(5, int(is_case.value_counts().min())), n_repeats=10, random_state=0
+    )
     auc = cross_val_score(model, x, is_case, cv=folds, scoring="roc_auc").mean()
     weights = model.fit(x, is_case)[-1].coef_[0]
     return float(auc), {f: round(float(w), 3) for f, w in zip(MODEL_FEATURES, weights, strict=True)}

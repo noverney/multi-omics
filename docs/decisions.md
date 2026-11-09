@@ -26,6 +26,9 @@ Each entry gives the choice, why it was made, and what production would add.
 | **Quarantine, never drop** | Every rejected row keeps its raw content and a reason; implausible values hold the participant out of research |
 | **NPX never converted; proteins keyed by UniProt; genes by Ensembl** | Relative units can't become absolute ones; names are ambiguous, stable IDs are not |
 | **Olink re-run on another date = replicate** | (sample, protein, run date) is the natural key; choosing the best replicate is an analysis decision |
+| **The drug trial is a new study, not a rewrite** | IBD-04 reuses every feed and rule; the 60 observational participants and their checks stay byte-identical (the trial has its own random stream) |
+| **A fictional drug on real genetics** | The DNA → RNA → protein chain is real (rs2248374 → ERAP2 decay); only the drug and its effect are planted, and both are labelled as simulation |
+| **Arms are reference data** | `CASE`/`CONTROL` was a CHECK constraint; trials need placebo and drug arms per study, validated against `reference/arms.csv` like any other code |
 
 ## Omitted (deliberately), with the production answer
 

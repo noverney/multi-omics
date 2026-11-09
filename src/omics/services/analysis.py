@@ -33,7 +33,8 @@ def refresh(conn: Connection, studies: list[str]) -> None:
     """Recompute features, outliers and the model for whole studies (20 people: cheap)."""
     members = frame(
         conn,
-        'SELECT "USUBJID", "STUDYID", "ARM" FROM api.sdtm_dm WHERE "STUDYID" = ANY(%s)',
+        'SELECT "USUBJID", "STUDYID", "ARMCD" AS "ARM" FROM api.sdtm_dm WHERE "STUDYID" = ANY(%s)'
+        ' ORDER BY "USUBJID"',  # fixed row order -> the same CV folds -> a reproducible AUC
         [studies],
     ).set_index("USUBJID")
     long = frame(
@@ -64,7 +65,8 @@ def refresh(conn: Connection, studies: list[str]) -> None:
                     [hit.usubjid, hit.feature, hit.value, round(hit.robust_z, 2), study,
                      people.ARM[hit.usubjid]],
                 )  # fmt: skip
-            if people.ARM.value_counts().min() >= 2 and people.ARM.nunique() == 2:
+            # Case vs control only: a drug trial (placebo vs drug) is not a diagnosis model.
+            if set(people.ARM) == {"CASE", "CONTROL"} and people.ARM.value_counts().min() >= 2:
                 auc, weights = research.case_control_auc(study_features, people.ARM == "CASE")
                 conn.execute(
                     "INSERT INTO research.model_score (study_id, auc, n, coefficients)"

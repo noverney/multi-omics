@@ -12,3 +12,10 @@ versions:
     specimen: specimen_type
     collected_at: collected_at
     encounter_id: encounter_id
+  2:                              # adds the visit each sample was taken at (CDISC VISIT)
+    sample_id: sample_id
+    participant_id: participant_id
+    specimen: specimen_type
+    collected_at: collected_at
+    encounter_id: encounter_id
+    visit: visit

@@ -1,30 +1,37 @@
-node_id,label,kind
-gene:CRP,CRP gene (Ensembl ENSG00000132693),gene
-gene:TNF,TNF gene (Ensembl ENSG00000232810),gene
-gene:IL6,IL6 gene (Ensembl ENSG00000136244),gene
-gene:IL10,IL10 gene (Ensembl ENSG00000136634),gene
-protein:P02741,C-reactive protein (UniProt P02741),protein
-protein:P01375,Tumor necrosis factor (UniProt P01375),protein
-protein:P05231,Interleukin-6 (UniProt P05231),protein
-protein:P22301,Interleukin-10 (UniProt P22301),protein
-test:CRP,Serum CRP (LOINC 1988-5),test
-test:HSCRP,Serum hs-CRP (LOINC 30522-7),test
-test:NPX_CRP,Olink CRP (NPX),test
-test:NPX_TNF,Olink TNF (NPX),test
-test:NPX_IL6,Olink IL6 (NPX),test
-test:NPX_IL10,Olink IL10 (NPX),test
-gene:ERAP2,ERAP2 gene (Ensembl ENSG00000164308),gene
-variant:rs2248374,rs2248374 (dbSNP),variant
-variant:rs1205,rs1205 (dbSNP),variant
-variant:rs1800629,rs1800629 (dbSNP),variant
-variant:rs1800795,rs1800795 (dbSNP),variant
-variant:rs1800896,rs1800896 (dbSNP),variant
-test:EXPR_ERAP2,ERAP2 expression (RNA-seq),test
-test:EXPR_TNF,TNF expression (RNA-seq),test
-test:EXPR_IL6,IL6 expression (RNA-seq),test
-test:EXPR_IL10,IL10 expression (RNA-seq),test
-test:GT_RS2248374,Genotype rs2248374,test
-test:GT_RS1205,Genotype rs1205,test
-test:GT_RS1800629,Genotype rs1800629,test
-test:GT_RS1800795,Genotype rs1800795,test
-test:GT_RS1800896,Genotype rs1800896,test
+node_id,label,kind,definition
+gene:CRP,CRP gene (Ensembl ENSG00000132693),gene,"Gene for C-reactive protein; made in the liver, so absent from lymphoblastoid RNA (Geuvadis)."
+gene:TNF,TNF gene (Ensembl ENSG00000232810),gene,"Gene for tumour necrosis factor, a central pro-inflammatory cytokine."
+gene:IL6,IL6 gene (Ensembl ENSG00000136244),gene,"Gene for interleukin-6, the cytokine that drives CRP production in the liver."
+gene:IL10,IL10 gene (Ensembl ENSG00000136634),gene,"Gene for interleukin-10, an anti-inflammatory cytokine."
+protein:P02741,C-reactive protein (UniProt P02741),protein,"C-reactive protein: acute-phase protein, the standard blood marker of systemic inflammation."
+protein:P01375,Tumor necrosis factor (UniProt P01375),protein,"Tumour necrosis factor: pro-inflammatory cytokine, target of anti-TNF therapies."
+protein:P05231,Interleukin-6 (UniProt P05231),protein,Interleukin-6: pro-inflammatory cytokine that induces CRP.
+protein:P22301,Interleukin-10 (UniProt P22301),protein,Interleukin-10: anti-inflammatory cytokine.
+test:CRP,Serum CRP (LOINC 1988-5),test,"Serum CRP by immunoturbidimetry (Lab A), mg/L."
+test:HSCRP,Serum hs-CRP (LOINC 30522-7),test,"Serum CRP by high-sensitivity immunoassay (Lab B), mg/L."
+test:NPX_CRP,Olink CRP (NPX),test,Olink proximity extension assay for CRP; NPX is log2 relative and never converted.
+test:NPX_TNF,Olink TNF (NPX),test,Olink proximity extension assay for TNF; NPX (log2 relative).
+test:NPX_IL6,Olink IL6 (NPX),test,Olink proximity extension assay for IL-6; NPX (log2 relative).
+test:NPX_IL10,Olink IL10 (NPX),test,Olink proximity extension assay for IL-10; NPX (log2 relative).
+gene:ERAP2,ERAP2 gene (Ensembl ENSG00000164308),gene,Gene for ERAP2; the rs2248374-G allele sends its mRNA to nonsense-mediated decay.
+variant:rs2248374,rs2248374 (dbSNP),variant,ERAP2 splice variant (A>G): G/G people make almost no ERAP2 (strong eQTL).
+variant:rs1205,rs1205 (dbSNP),variant,CRP 3' UTR variant (C>T) associated with circulating CRP levels.
+variant:rs1800629,rs1800629 (dbSNP),variant,TNF promoter variant -308 G/A.
+variant:rs1800795,rs1800795 (dbSNP),variant,IL6 promoter variant -174 G/C.
+variant:rs1800896,rs1800896 (dbSNP),variant,IL10 promoter variant -1082 A/G.
+test:EXPR_ERAP2,ERAP2 expression (RNA-seq),test,"RNA-seq expression of ERAP2 in lymphoblastoid cells (Geuvadis), nRPKM."
+test:EXPR_TNF,TNF expression (RNA-seq),test,"RNA-seq expression of TNF in lymphoblastoid cells (Geuvadis), nRPKM."
+test:EXPR_IL6,IL6 expression (RNA-seq),test,"RNA-seq expression of IL6 in lymphoblastoid cells (Geuvadis), nRPKM."
+test:EXPR_IL10,IL10 expression (RNA-seq),test,"RNA-seq expression of IL10 in lymphoblastoid cells (Geuvadis), nRPKM."
+test:GT_RS2248374,Genotype rs2248374,test,"Genotype of rs2248374 (1000 Genomes); STRESC = alleles, STRESN = ALT dosage."
+test:GT_RS1205,Genotype rs1205,test,"Genotype of rs1205 (1000 Genomes); STRESC = alleles, STRESN = ALT dosage."
+test:GT_RS1800629,Genotype rs1800629,test,"Genotype of rs1800629 (1000 Genomes); STRESC = alleles, STRESN = ALT dosage."
+test:GT_RS1800795,Genotype rs1800795,test,"Genotype of rs1800795 (1000 Genomes); STRESC = alleles, STRESN = ALT dosage."
+test:GT_RS1800896,Genotype rs1800896,test,"Genotype of rs1800896 (1000 Genomes); STRESC = alleles, STRESN = ALT dosage."
+protein:Q6P179,Endoplasmic reticulum aminopeptidase 2 (UniProt Q6P179),protein,ERAP2: trims peptides for MHC class I antigen presentation; absent in rs2248374 G/G.
+test:NPX_ERAP2,Olink ERAP2 (NPX),test,Olink proximity extension assay for ERAP2; NPX (log2 relative).
+drug:OMX-101,OMX-101 (fictional ERAP2 inhibitor),drug,Fictional oral ERAP2 inhibitor tested in the simulated IBD-04 trial.
+disease:MONDO_0004995,cardiovascular disorder (MONDO:0004995),disease,Disease of the heart or blood vessels.
+disease:MONDO_0008383,rheumatoid arthritis (MONDO:0008383),disease,Chronic autoimmune inflammation of the joints.
+disease:MONDO_0005265,inflammatory bowel disease (MONDO:0005265),disease,Chronic inflammation of the gut: Crohn disease or ulcerative colitis.
+disease:MONDO_0005011,Crohn disease (MONDO:0005011),disease,Inflammatory bowel disease that can affect any part of the gut.

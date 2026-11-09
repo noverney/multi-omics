@@ -1,4 +1,5 @@
-study_id,title,disease_area
-CARDIO-01,Inflammation and cardiovascular risk,Cardiovascular
-RA-02,Inflammatory markers in rheumatoid arthritis,Rheumatology
-IBD-03,Biomarkers in inflammatory bowel disease,Gastroenterology
+study_id,title,disease_area,disease_id
+CARDIO-01,Inflammation and cardiovascular risk,Cardiovascular,disease:MONDO_0004995
+RA-02,Inflammatory markers in rheumatoid arthritis,Rheumatology,disease:MONDO_0008383
+IBD-03,Biomarkers in inflammatory bowel disease,Gastroenterology,disease:MONDO_0005265
+IBD-04,OMX-101 vs placebo in Crohn disease: randomized double-blind 12-week trial,Gastroenterology,disease:MONDO_0005011

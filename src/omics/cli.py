@@ -25,7 +25,7 @@ SELECT md5(coalesce(string_agg(row, '|' ORDER BY row), '')), count(*) FROM (
           record_id)::text AS row FROM sci.measurement
   UNION ALL SELECT (participant_id, usubjid, study_id, arm, sex, age, enrolled_on,
                     reported_at)::text FROM core.participant
-  UNION ALL SELECT (sample_id, participant_id, specimen, collected_at, encounter_id,
+  UNION ALL SELECT (sample_id, participant_id, specimen, collected_at, encounter_id, visit,
                     reported_at)::text FROM core.sample
   UNION ALL SELECT (record_id, reason)::text FROM ops.quarantine WHERE status = 'OPEN'
 ) derived"""

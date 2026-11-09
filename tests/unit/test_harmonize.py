@@ -84,3 +84,21 @@ def test_same_content_formatted_differently_has_the_same_hash(run):
 def test_schema_v2_maps_the_renamed_column(run):
     payload = lab_b("P001", "S200", None) | {"result_value": "3200", "flag": "H"}
     assert run(payload, "lab_b", version=2).row["value_num"] == Decimal("3.2")
+
+
+def enroll(study, arm):
+    return {"subject_id": "P061", "study": study, "arm": arm, "sex": "F", "age": "40",
+            "enrolled_on": "2025-11-10"}  # fmt: skip
+
+
+def test_trial_arms_are_checked_per_study(run):
+    assert run(enroll("IBD-04", " omx101"), "ctms_enrollment").row["arm"] == "OMX101"
+    out = run(enroll("IBD-04", "CASE"), "ctms_enrollment")  # CASE is not an IBD-04 arm
+    assert out.issue.reason == "BAD_VALUE" and "IBD-04" in out.issue.detail
+
+
+def test_biobank_v2_keeps_the_visit(run):
+    payload = {"sample_id": "S540", "participant_id": "P001", "specimen_type": "serum",
+               "collected_at": "2026-02-16", "encounter_id": "E661",
+               "visit": "week 12"}  # fmt: skip
+    assert run(payload, "biobank_samples", version=2).row["visit"] == "WEEK 12"

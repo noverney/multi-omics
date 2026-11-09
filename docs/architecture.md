@@ -119,18 +119,33 @@ In one demo run the labs beat the clinic, so 601 rows waited for their master da
   - DNA: real 1000 Genomes genotypes.
   - RNA: real Geuvadis expression, measured in the same individuals.
   - Both were fetched once with `make fetch`; provenance is in `data/open/SOURCES.md`.
-- **The people:** the 60 individuals are relabelled to the biobank DNA/RNA aliquots of P001–P060. This simulation step is documented.
+- **The people:** 100 individuals are relabelled to the biobank DNA/RNA aliquots of P001–P100 (P061–P100 form the IBD-04 trial). This simulation step is documented.
 - **The pipeline:**
   - Parsers for a wide expression matrix and a VCF; genotypes become a categorical value (call as text, ALT dosage as number).
   - The full omics files go to S3 as Parquet; only the gene/variant panel goes to Postgres.
   - The analysis consumer reads the Parquet with Dask and joins DNA and RNA through `api.samples`.
 - **The result:** the known ERAP2 eQTL is recovered, rs2248374: **r = −0.89, p = 3e-21**, about −16.6 nRPKM per G allele. The other promoter variants are null in these cells, and CRP is absent from the RNA because it is made in the liver.
 
+## Drug trial: did OMX-101 work?
+
+IBD-04 is a simulated placebo-controlled trial of a fictional ERAP2 inhibitor, built on the real genetics above. The question a bioinformatician asks crosses all three omics layers:
+
+```mermaid
+flowchart LR
+  dna["DNA · rs2248374<br/>A/A · A/G · G/G<br/>(real, 1000 Genomes)"] -->|"G allele: mRNA decays (NMD)"| rna["RNA · ERAP2<br/>high · mid · near zero<br/>(real, Geuvadis)"]
+  rna --> protein["Protein · ERAP2 NPX<br/>made · made · absent<br/>(planted Olink)"]
+  protein -->|"OMX-101 inhibits"| crp["CRP at week 12<br/>falls only if ERAP2 exists<br/>(planted Lab A)"]
+```
+
+- Each participant has CRP and an Olink run at `VISIT` BASELINE and WEEK 12, plus real DNA and RNA.
+- The `Drug response` check in `make demo` computes the median CRP ratio (week 12 / baseline) by arm and genotype from `api.research_findings`.
+
 ## Data model
 
 ```mermaid
 erDiagram
-  STUDY ||--o{ PARTICIPANT : enrolls
+  STUDY ||--o{ STUDY_ARM : "has arms"
+  STUDY_ARM ||--o{ PARTICIPANT : assigns
   PARTICIPANT ||--o{ SAMPLE : gives
   PARTICIPANT ||--o{ MEASUREMENT : has
   SAMPLE |o--o{ MEASUREMENT : "measured in"
@@ -170,4 +185,7 @@ erDiagram
 | M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | ✅ done |
 | M5 | Consumers and dashboards | ✅ done |
 | M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | ✅ done |
-| M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | planned |
+| M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | ✅ done |
+| M8 | Repo hygiene: index cache out of the tree, README layout | ✅ done |
+| M9 | Drug trial IBD-04: arms as reference data, visits, ERAP2 protein, drug-response check | ✅ done |
+| M10 | Ontology for LLMs: MCP server, agent workspace (pipelines + dashboards as a subtree) | planned |

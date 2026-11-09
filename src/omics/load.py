@@ -31,7 +31,9 @@ MEASUREMENT = (
 PARTICIPANT = (
     "participant_id usubjid study_id arm sex age enrolled_on reported_at record_id".split()
 )
-SAMPLE = "sample_id participant_id specimen collected_at encounter_id reported_at record_id".split()
+SAMPLE = (
+    "sample_id participant_id specimen collected_at encounter_id visit reported_at record_id"
+).split()
 
 # Same content delivered twice (a re-send): keep the lineage of the EARLIEST delivery, so
 # the stored result does not depend on which copy happened to be processed first.
@@ -75,17 +77,19 @@ FOR UPDATE OF q SKIP LOCKED"""
 
 
 def reference(conn: Connection) -> Reference:
-    """Load concepts, unit conversions and studies (seeded from reference/*.csv)."""
+    """Load concepts, unit conversions, studies and their arms (from reference/*.csv)."""
     concepts = conn.execute(
         "SELECT concept_id, unit, scale, plausible_low, plausible_high, ref_low, ref_high"
         " FROM core.concept"
     )
     conversions = conn.execute("SELECT from_unit, to_unit, factor FROM core.unit_conversion")
-    studies = conn.execute("SELECT study_id FROM core.study")
+    studies = conn.execute("SELECT study_id FROM core.study").fetchall()
+    arms = conn.execute("SELECT study_id, armcd FROM core.study_arm").fetchall()
     return Reference(
         concepts={row[0]: Concept(*row) for row in concepts},
         conversions={(src, dst): factor for src, dst, factor in conversions},
         studies=frozenset(row[0] for row in studies),
+        arms=frozenset((study, armcd) for study, armcd in arms),
     )
 
 

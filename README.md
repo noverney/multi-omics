@@ -9,6 +9,8 @@ Six simulated labs deliver files:
 - Olink proteomics
 - **real open data**: 1000 Genomes DNA and Geuvadis RNA
 
+They cover four studies: three observational case/control studies and **IBD-04, a simulated placebo-controlled trial** of a fictional ERAP2 inhibitor, built on its participants' real genetics.
+
 Files land in S3 and small claim-check events travel over a 3-broker Redpanda cluster. Prefect flows harmonize every row into one append-only store with row-level lineage. It is published as CDISC SDTM through an API, topics and a dashboard.
 
 ```mermaid
@@ -58,9 +60,10 @@ curl -s -H 'X-API-Key: research-key-dev' \
 
 ## Verified results
 
-- **`make demo`:** 14/14 checks pass, covering idempotency, entity resolution, normalization, validation, corrections, late data, schema evolution, fault tolerance, lineage, access control, analysis, monitoring, multi-omics and determinism. The replay reproduces the golden checksum exactly.
+- **`make demo`:** 15/15 checks pass, covering idempotency, entity resolution, normalization, validation, corrections, late data, schema evolution, fault tolerance, lineage, access control, analysis, monitoring, multi-omics, drug response and determinism. The replay reproduces the golden checksum exactly.
 - **`make chaos`:** random task crashes, the dispatcher and the analysis consumer down, the flow-runner `kill -9`'d and one broker stopped. Everything settles by itself, with the **same checksum** as a clean run.
-- **Real biology from open data:** ERAP2 expression vs rs2248374 genotype, r = −0.89, p = 3e-21.
+- **Real biology from open data:** ERAP2 expression vs rs2248374 genotype, r = −0.83, p = 2e-26 (n = 99).
+- **Did the drug work?** In IBD-04, CRP fell to ×0.42 of baseline on OMX-101 in people who make ERAP2, vs ×0.84 on placebo. G/G people, who make no ERAP2, didn't respond (×1.02).
 
 ## Repository layout
 

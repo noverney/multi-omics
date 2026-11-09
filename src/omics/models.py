@@ -47,6 +47,7 @@ class SdtmFinding(BaseModel):
     SPEC: str | None
     LOINC: str | None
     REFID: str | None  # specimen (sample) identifier
+    VISIT: str | None = None  # protocol visit, e.g. BASELINE, WEEK 12 (from the biobank)
     DTC: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?$")  # ISO 8601
     SUPP: dict[str, str | None]  # supplemental qualifiers, e.g. QCFLAG, RUNDTC
     measurement_id: UUID  # lineage: follow this id to the raw row and the file

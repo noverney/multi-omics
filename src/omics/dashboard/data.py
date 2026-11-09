@@ -6,9 +6,16 @@ import streamlit as st
 
 from omics import db
 
-# Case/control identity colors: a teal stepped for contrast + a warm pole. Validated
-# with the dataviz checker on white: CVD dE 11.0, normal-vision dE 27.6, both >= 3:1.
-ARM_COLORS = {"CONTROL": "#0b958a", "CASE": "#eb6834"}
+# Arm-role identity colors: a teal stepped for contrast + a warm pole. Validated with
+# the dataviz checker on white: CVD dE 11.0, normal-vision dE 27.6, both >= 3:1. A study has
+# one reference arm (control or placebo) and one active arm (disease or drug).
+ROLE_COLORS = {"Control or placebo": "#0b958a", "Case or drug": "#eb6834"}
+ROLE = {
+    "CONTROL": "Control or placebo",
+    "PLACEBO": "Control or placebo",
+    "CASE": "Case or drug",
+    "TREATMENT": "Case or drug",
+}  # by ARMTYPE; fmt: skip
 SERIES = "#0b958a"  # single-series charts
 INK, MUTED, GRID = "#101820", "#6f6f6f", "#e1e0d9"
 
@@ -40,3 +47,9 @@ def table(frame: pd.DataFrame, label: str = "Data") -> None:
     """Show the numbers behind a chart (the accessible table view)."""
     with st.expander(label):
         st.dataframe(frame, hide_index=True)
+
+
+def arm_roles() -> dict[str, str]:
+    """Map every ARMCD (e.g. CASE, PBO, OMX101) to its role label."""
+    arms = sql('SELECT DISTINCT "ARMCD", "ARMTYPE" FROM api.study_arms')
+    return {a.ARMCD: ROLE[a.ARMTYPE] for a in arms.itertuples()}

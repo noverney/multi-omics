@@ -1,8 +1,9 @@
 """Generate the synthetic lab deliveries into data/scenario/<lab>/d<day>/ (fixed seed).
 
-Includes the brief's example rows verbatim, a case/control signal for the analysis, and the
-edge cases the demo needs (unit mix-ups, late masters, corrections, schema change...).
-Run: docker compose run --rm tools python scripts/generate_synthetic.py
+Includes the brief's example rows verbatim, a case/control signal for the analysis, the
+edge cases the demo needs (unit mix-ups, late masters, corrections, schema change...) and
+IBD-04, a simulated drug trial built on the real open DNA/RNA of its 40 participants.
+Run after fetch_open_data.py: docker compose run --rm tools python scripts/generate_synthetic.py
 """
 
 import csv
@@ -12,8 +13,11 @@ import shutil
 from datetime import date, timedelta
 from pathlib import Path
 
+from omics.parse import parse_vcf
+
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "scenario"
+OPEN = ROOT / "data" / "open"
 RNG = random.Random(2026)
 STUDIES = ("CARDIO-01", "RA-02", "IBD-03")
 # Planted case/control signal, deliberately modest (effect sizes ~0.5-1 SD per marker):
@@ -24,6 +28,19 @@ VITALS = {"HR": (70, 73, 8), "SYS_BP": (118, 122, 11)}  # control mean, case mea
 NPX_BUMP = {"CARDIO-01": 0.3, "RA-02": 0.35, "IBD-03": 0.3}  # NPX shift for cases
 NPX_SD = 0.45
 LATE_SAMPLE = "S159"  # Olink measures it on day 1; the biobank registers it on day 2
+
+# IBD-04 (fictional): OMX-101 inhibits ERAP2, so it can only work in people who make ERAP2.
+# rs2248374-G sends ERAP2 mRNA to nonsense-mediated decay: G/G people have none (real biology).
+TRIAL, TRIAL_RNG = "IBD-04", random.Random(404)  # own stream: other studies stay identical
+CRP_RATIO = {
+    ("OMX101", True): 0.4,
+    ("OMX101", False): 0.9,
+    ("PBO", True): 0.85,
+    ("PBO", False): 0.85,
+}  # week 12 / baseline, by (arm, ERAP2 expresser)
+NPX_DROP = {"TNF": 0.7, "IL6": 1.0}  # week-12 fall for OMX-101 in ERAP2 expressers
+TRIAL_PROTEINS = (("CRP", "P02741"), ("TNF", "P01375"), ("IL6", "P05231"), ("IL10", "P22301"),
+                  ("ERAP2", "Q6P179"))  # fmt: skip
 
 
 def people() -> list[dict]:
@@ -65,28 +82,42 @@ def write(lab: str, day: int, name: str, header: list[str], rows: list[list]) ->
         writer.writerows(rows)
 
 
-def clinic(cohort: list[dict]) -> None:
-    """CTMS enrollment, biobank manifest and EHR vitals (P003 and two samples arrive late)."""
+def clinic(cohort: list[dict], trial: list[dict]) -> None:
+    """CTMS enrollment, biobank manifest (v2, with visits) and EHR vitals.
+
+    P003 and two samples arrive late; the IBD-04 trial is enrolled and banked on day 1.
+    """
     enrollment = ["subject_id", "study", "arm", "sex", "age", "enrolled_on"]
     rows = [[p["pid"], p["study"], "CASE" if p["case"] else "CONTROL", p["sex"], p["age"],
              p["visit"] - timedelta(days=7)] for p in cohort]  # fmt: skip
+    trial_rows = [[p["pid"], TRIAL, p["arm"], p["sex"], p["age"], p["baseline"] - timedelta(14)]
+                  for p in trial]  # fmt: skip
     write("clinic", 1, "ctms_enrollment_20260310T0800.csv", enrollment,
-          [r for r in rows if r[0] != "P003"])  # fmt: skip
+          [r for r in rows if r[0] != "P003"] + trial_rows)  # fmt: skip
     write("clinic", 2, "ctms_enrollment_20260317T0800.csv", enrollment,
           [r for r in rows if r[0] == "P003"])  # fmt: skip
 
-    manifest = ["sample_id", "participant_id", "specimen_type", "collected_at", "encounter_id"]
-    samples = [[p["sample"], p["pid"], "SERUM", p["visit"], p["encounter"]] for p in cohort]
+    manifest = ["sample_id", "participant_id", "specimen_type", "collected_at", "encounter_id",
+                "visit"]  # fmt: skip
+    samples = [[p["sample"], p["pid"], "SERUM", p["visit"], p["encounter"], "BASELINE"]
+               for p in cohort]  # fmt: skip
     samples += [
-        [f"{kind}{100 + i}", p["pid"], kind_name, p["visit"], p["encounter"]]
+        [f"{kind}{100 + i}", p["pid"], kind_name, p["visit"], p["encounter"], "BASELINE"]
         for i, p in enumerate(cohort)
         for kind, kind_name in (("R", "RNA"), ("D", "DNA"))
     ]  # open-data aliquots
-    samples += [[p["fu_sample"], p["pid"], "SERUM", p["fu_date"], f"E{400 + int(p['pid'][1:])}"]
-                for p in cohort if p["fu_sample"]]  # fmt: skip
+    samples += [[p["fu_sample"], p["pid"], "SERUM", p["fu_date"], f"E{400 + int(p['pid'][1:])}",
+                 "FOLLOW-UP 1"] for p in cohort if p["fu_sample"]]  # fmt: skip
     samples += [
-        [f"S{230 + k}", f"P{2 * k + 1:03d}", "SERUM", date(2026, 3, 24), ""] for k in range(5)
+        [f"S{230 + k}", f"P{2 * k + 1:03d}", "SERUM", date(2026, 3, 24), "", "FOLLOW-UP 2"]
+        for k in range(5)
     ]  # second follow-up, reported by Lab B with a new schema
+    for p in trial:
+        first, last = f"E{500 + int(p['pid'][1:])}", f"E{600 + int(p['pid'][1:])}"
+        samples += [[p["s0"], p["pid"], "SERUM", p["baseline"], first, "BASELINE"],
+                    [p["rna"], p["pid"], "RNA", p["baseline"], first, "BASELINE"],
+                    [p["dna"], p["pid"], "DNA", p["baseline"], first, "BASELINE"],
+                    [p["s12"], p["pid"], "SERUM", p["week12"], last, "WEEK 12"]]  # fmt: skip
     late = {LATE_SAMPLE, "S201"}
     write("clinic", 1, "biobank_samples_20260310T0800.csv", manifest,
           [s for s in samples if s[0] not in late])  # fmt: skip
@@ -191,18 +222,100 @@ def olink(cohort: list[dict], values: dict) -> None:
     write("olink", 1, "olink_npx_20260310T1100.csv", header, rows)
 
 
+def open_data() -> tuple[dict, dict]:
+    """Real ERAP2 expression per RNA aliquot and rs2248374 G-allele dosage per DNA aliquot."""
+    with (OUT / "rna-lab/d1/geuvadis_rpkm_20260312T0900.tsv").open() as handle:
+        rows = csv.DictReader(handle, delimiter="\t")
+        erap2 = next(r for r in rows if r["TargetID"] == "ENSG00000164308")
+    _, calls = parse_vcf((OUT / "dna-lab/d1/genotypes_20260312T1000.vcf").read_bytes())
+    dosage = {c["sample_id"]: int(c["DOSAGE"]) for c in calls if c["ID"] == "rs2248374"}
+    return {k: float(v) for k, v in erap2.items() if k.startswith("R")}, dosage
+
+
+def trial_people() -> list[dict]:
+    """IBD-04: P061-P100 (real open-data individuals), randomized 1:1 within genotype strata.
+
+    Stratifying by rs2248374 (G/G vs A carrier) keeps both arms balanced for the subgroup
+    the hypothesis is about, as a pharmacogenomic trial would.
+    """
+    expression, dosage = open_data()
+    aliquots = {r["participant_id"]: r for r in csv.DictReader((OPEN / "sample_map.csv").open())}
+    pids = [f"P{61 + k:03d}" for k in range(40)]
+    expresser = {p: dosage[aliquots[p]["dna_sample"]] < 2 for p in pids}  # >= 1 A allele
+    arm = {}
+    for start, stratum in enumerate(([p for p in pids if not expresser[p]],
+                                     [p for p in pids if expresser[p]])):  # fmt: skip
+        TRIAL_RNG.shuffle(stratum)
+        arm |= {p: ("OMX101", "PBO")[(j + start) % 2] for j, p in enumerate(stratum)}
+    rows = []
+    for k, pid in enumerate(pids):
+        baseline, ids = date(2025, 11, 24) + timedelta(days=k // 2), aliquots[pid]
+        rows.append({
+            "pid": pid, "arm": arm[pid], "sex": TRIAL_RNG.choice("FM"),
+            "age": TRIAL_RNG.randint(18, 70), "baseline": baseline,
+            "week12": baseline + timedelta(days=84), "s0": f"S{500 + k}", "s12": f"S{540 + k}",
+            "rna": ids["rna_sample"], "dna": ids["dna_sample"], "expresser": expresser[pid],
+            "erap2_rna": expression[ids["rna_sample"]],
+        })  # fmt: skip
+    return rows
+
+
+def trial_values(trial: list[dict]) -> dict:
+    """CRP (mg/L) and NPX per (participant, visit), with the planted OMX-101 effect."""
+    values = {}
+    for p in trial:
+        crp0 = math.exp(TRIAL_RNG.gauss(math.log(9.0), 0.5))  # active Crohn disease
+        crp12 = crp0 * CRP_RATIO[p["arm"], p["expresser"]] * math.exp(TRIAL_RNG.gauss(0, 0.25))
+        responds = p["arm"] == "OMX101" and p["expresser"]
+        base = {"TNF": 3.3, "IL6": 2.9, "IL10": 3.1}
+        base = {k: v + TRIAL_RNG.gauss(0, NPX_SD) for k, v in base.items()}
+        for visit, crp in (("BASELINE", crp0), ("WEEK 12", crp12)):
+            on_drug = responds and visit == "WEEK 12"
+            drop = {k: d if on_drug else 0.05 for k, d in NPX_DROP.items()}
+            values[p["pid"], visit] = (
+                round(crp, 1),
+                {
+                    "CRP": 8.39 + 1.2 * math.log2(crp) + TRIAL_RNG.gauss(0, 0.3),
+                    "TNF": base["TNF"] - drop["TNF"] + TRIAL_RNG.gauss(0, 0.25),
+                    "IL6": base["IL6"] - drop["IL6"] + TRIAL_RNG.gauss(0, 0.25),
+                    "IL10": base["IL10"] + TRIAL_RNG.gauss(0, 0.25),
+                    # an inhibitor blocks ERAP2's activity, not its abundance: tracks own RNA
+                    "ERAP2": 0.5 + math.log2(max(p["erap2_rna"], 0) + 1) + TRIAL_RNG.gauss(0, 0.3),
+                },
+            )
+    return values
+
+
+def trial_labs(trial: list[dict], values: dict) -> None:
+    """IBD-04 deliveries per visit: Lab A CRP and one Olink plate run (5 proteins)."""
+    lab_header = ["participant_id", "sample_id", "analyte", "value", "unit", "collected_at"]
+    olink_header = ["SampleID", "AssayTarget", "UniProtID", "NPX_Value", "QC_Flag", "RunDate"]
+    for day, visit, sample, when, lab_stamp, olink_stamp, run in (
+        (1, "BASELINE", "s0", "baseline", "20251215", "20251217", "2025-12-16"),
+        (2, "WEEK 12", "s12", "week12", "20260311", "20260311", "2026-03-09"),
+    ):
+        write("lab-a", day, f"lab_a_{lab_stamp}T0900.csv", lab_header,
+              [[p["pid"], p[sample], "CRP", values[p["pid"], visit][0], "mg/L", p[when]]
+               for p in trial])  # fmt: skip
+        rows = [[p[sample], target, uniprot, round(values[p["pid"], visit][1][target], 2),
+                 "WARN" if TRIAL_RNG.random() < 0.04 else "PASS", run]
+                for p in trial for target, uniprot in TRIAL_PROTEINS]  # fmt: skip
+        write("olink", day, f"olink_npx_{olink_stamp}T1100.csv", olink_header, rows)
+
+
 def main() -> None:
     """Regenerate every scenario file from scratch."""
     for lab in ("clinic", "lab-a", "lab-b", "olink"):  # rna-lab/dna-lab: fetch_open_data.py
         shutil.rmtree(OUT / lab, ignore_errors=True)
-    cohort = people()
+    cohort, trial = people(), trial_people()
     values = {p["pid"]: crp(p) for p in cohort}
     values |= {"P001": 3.2, "P002": 1.7}  # brief rows, verbatim
     values |= {"P010": 0.9}  # sent x1000 on day 1 (900 "mg/L"): must stay implausible
-    clinic(cohort)
+    clinic(cohort, trial)
     lab_a(cohort, values)
     lab_b(cohort, values)
     olink(cohort, values)
+    trial_labs(trial, trial_values(trial))
     files = sorted(OUT.rglob("*.csv"))  # synthetic deliveries only
     print(f"wrote {len(files)} files under {OUT.relative_to(ROOT)}")
 
