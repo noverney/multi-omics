@@ -24,6 +24,9 @@ class Contract:
     codes: dict[str, str]  # source code -> core.concept id
     fixed: dict[str, str]  # canonical fields with a constant value (e.g. Olink unit NPX)
     ignore: tuple[str, ...] = ()  # source columns known and deliberately unused
+    id_columns: tuple[str, ...] = ()  # matrix files: feature columns (the rest are samples)
+    panel_only: bool = False  # codes outside the code map are bulk data, not errors
+    curated: bool = False  # also keep the full parsed file as Parquet in s3://curated/
 
     def reported_at(self, file_name: str) -> datetime:
         """Return the export time encoded in the file name, e.g. `lab_b_20260310T1000.csv`."""
@@ -60,6 +63,9 @@ def load_all(folder: Path = ROOT / "contracts") -> list[Contract]:
                 codes={str(k).upper(): v for k, v in spec.get("codes", {}).items()},
                 fixed=spec.get("fixed", {}),
                 ignore=tuple(spec.get("ignore", ())),
+                id_columns=tuple(spec.get("id_columns", ())),
+                panel_only=spec.get("panel_only", False),
+                curated=spec.get("curated", False),
             )
         )
     return contracts

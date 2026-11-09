@@ -9,16 +9,16 @@ Every lab speaks its own dialect. The pipeline maps each one onto shared vocabul
 | Clinical tests and vital signs | LOINC | CRP `1988-5`, hs-CRP `30522-7`, heart rate `8867-4` |
 | Units | UCUM | `mg/L`, `/min`, `mm[Hg]` (ug/L → mg/L ×0.001) |
 | Proteins | UniProt | CRP `P02741`, TNF `P01375` |
-| Genes, variants (M6) | Ensembl / HGNC, dbSNP | `ENSG00000132693`, `rs1205` |
+| Genes, variants | Ensembl gene IDs (never symbols), dbSNP rsIDs, GRCh37 positions | `ENSG00000164308`, `rs2248374` |
 | Dates and times | ISO 8601, keeping the source precision | `2026-01-10` or `2026-01-10T09:30` |
-| Output | CDISC SDTM (DM, VS, LB) + controlled terminology | `LBTESTCD=CRP`, `NRIND=HIGH` |
+| Output | CDISC SDTM (DM, VS, LB, GF) + controlled terminology | `LBTESTCD=CRP`, `NRIND=HIGH` |
 
 ## Canonical measurement → SDTM findings
 
 | SDTM variable | Meaning | From |
 | --- | --- | --- |
 | `STUDYID`, `USUBJID` | Study, unique subject (`STUDYID-SUBJID`) | `core.participant` |
-| `DOMAIN` | VS (vital signs) or LB (lab, including proteomics) | `core.concept.domain` |
+| `DOMAIN` | VS (vital signs), LB (lab, including proteomics) or GF (genomics) | `core.concept.domain` |
 | `--TESTCD` / `--TEST` | Test code / name (CDISC CT) | `core.concept` |
 | `--CAT`, `--METHOD`, `--LOINC` | Category, assay method, LOINC code | `core.concept` |
 | `--ORRES` / `--ORRESU` | Result **as received** | `orig_value`, `orig_unit` |
@@ -41,6 +41,10 @@ Topic messages and the views use unprefixed names plus `DOMAIN`. The API returns
   - Rows are keyed by UniProt, never by target name.
 - **Dates:** `--DTC` keeps the precision the lab sent. Nothing turns a date into a fake midnight timestamp.
 - **QC flags:** assay QC is kept as `SUPP.QCFLAG`. It is not a pipeline validation error, and research views drop `FAIL` rows.
+- **Genomics (GF):**
+  - Genotypes use `GFTESTCD=GENOTYPE`; the variant goes in `SUPP.VOCAB` (`dbSNP:rs2248374`).
+  - `STRESC` is the call (`A/G`, allele order normalized, so a phased `1|0` equals `0|1`); `STRESN` is the ALT-allele dosage.
+  - Expression uses the gene symbol as TESTCD, with unit `nRPKM` (Geuvadis PEER-normalized RPKM, which can be slightly negative).
 - **Demographics:** `DM` carries no birth date; `AGE` is the age at enrollment.
 
 ## Example (from `harmonized.sdtm`)

@@ -7,11 +7,20 @@ its own schema. Its own consumer group means it can lag or crash without slowing
 
 import json
 
+import dask.dataframe as dd
 import pandas as pd
 from psycopg import Connection
 from psycopg.types.json import Jsonb
 
-from omics import bus, db, research
+from omics import bus, db, research, settings
+
+# s3fs options for SeaweedFS (path-style URLs); the analysis identity can only read curated/.
+S3 = {
+    "key": settings.S3_ACCESS_KEY,
+    "secret": settings.S3_SECRET_KEY,
+    "client_kwargs": {"endpoint_url": settings.S3_ENDPOINT},
+    "config_kwargs": {"s3": {"addressing_style": "path"}},
+}
 
 
 def frame(conn: Connection, sql: str, params: list) -> pd.DataFrame:
@@ -66,6 +75,46 @@ def refresh(conn: Connection, studies: list[str]) -> None:
                 )
 
 
+def curated(source: str, columns: list[str]) -> pd.DataFrame:
+    """Read every curated Parquet file of a source with Dask (unchanged on a real cluster)."""
+    files = dd.read_parquet(f"s3://curated/{source}/", columns=columns, storage_options=S3)
+    return files.drop_duplicates().compute()
+
+
+def refresh_eqtl(conn: Connection) -> None:
+    """Recompute cis-eQTLs from the curated DNA and RNA files, research-safe people only."""
+    try:
+        dna = curated("dna_genotypes", ["ID", "sample_id", "DOSAGE"])
+        rna = curated("rna_expression", ["Gene_Symbol", "sample_id", "value"])
+    except (FileNotFoundError, OSError, ValueError):  # nothing curated yet
+        return
+    people = frame(conn, "SELECT sample_id, usubjid FROM api.samples", [])
+    allowed = set(frame(conn, "SELECT usubjid FROM research.participant_features", []).usubjid)
+    genotypes = dna.merge(people, on="sample_id").rename(columns={"ID": "variant"})
+    genotypes = genotypes[genotypes.usubjid.isin(allowed)].assign(
+        dosage=lambda d: pd.to_numeric(d.DOSAGE, errors="coerce")
+    )
+    expression = rna.merge(people, on="sample_id").rename(columns={"Gene_Symbol": "gene"})
+    expression = expression[expression.usubjid.isin(allowed)].assign(
+        value=lambda d: pd.to_numeric(d.value, errors="coerce")
+    )
+    pairs = frame(
+        conn,
+        "SELECT split_part(src, ':', 2), split_part(dst, ':', 2) FROM api.ontology_edges"
+        " WHERE rel = 'in_gene'",
+        [],
+    )
+    result = research.eqtl(genotypes, expression, list(pairs.itertuples(index=False, name=None)))
+    with conn.transaction():
+        conn.execute("DELETE FROM research.eqtl")
+        for row in result.itertuples():
+            conn.execute(
+                "INSERT INTO research.eqtl (variant, gene, n, slope, r, p_value)"
+                " VALUES (%s, %s, %s, %s, %s, %s)",
+                [row.variant, row.gene, row.n, round(row.slope, 4), round(row.r, 4), row.p_value],
+            )
+
+
 def main() -> None:
     """Consume in small batches; offsets are committed only after the refresh succeeded."""
     consumer = bus.consumer("analysis", ["harmonized.sdtm", "alerts"])
@@ -86,6 +135,7 @@ def main() -> None:
                 [sorted(subjects)],
             ).STUDYID.tolist()
             refresh(conn, studies)
+            refresh_eqtl(conn)
             print(f"analysis: {len(batch)} messages -> refreshed {', '.join(studies)}")
         consumer.commit(asynchronous=False)
 

@@ -77,6 +77,11 @@ def clinic(cohort: list[dict]) -> None:
 
     manifest = ["sample_id", "participant_id", "specimen_type", "collected_at", "encounter_id"]
     samples = [[p["sample"], p["pid"], "SERUM", p["visit"], p["encounter"]] for p in cohort]
+    samples += [
+        [f"{kind}{100 + i}", p["pid"], kind_name, p["visit"], p["encounter"]]
+        for i, p in enumerate(cohort)
+        for kind, kind_name in (("R", "RNA"), ("D", "DNA"))
+    ]  # open-data aliquots
     samples += [[p["fu_sample"], p["pid"], "SERUM", p["fu_date"], f"E{400 + int(p['pid'][1:])}"]
                 for p in cohort if p["fu_sample"]]  # fmt: skip
     samples += [
@@ -188,7 +193,8 @@ def olink(cohort: list[dict], values: dict) -> None:
 
 def main() -> None:
     """Regenerate every scenario file from scratch."""
-    shutil.rmtree(OUT, ignore_errors=True)
+    for lab in ("clinic", "lab-a", "lab-b", "olink"):  # rna-lab/dna-lab: fetch_open_data.py
+        shutil.rmtree(OUT / lab, ignore_errors=True)
     cohort = people()
     values = {p["pid"]: crp(p) for p in cohort}
     values |= {"P001": 3.2, "P002": 1.7}  # brief rows, verbatim
@@ -197,7 +203,7 @@ def main() -> None:
     lab_a(cohort, values)
     lab_b(cohort, values)
     olink(cohort, values)
-    files = sorted(OUT.rglob("*.csv"))
+    files = sorted(OUT.rglob("*.csv"))  # synthetic deliveries only
     print(f"wrote {len(files)} files under {OUT.relative_to(ROOT)}")
 
 

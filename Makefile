@@ -6,9 +6,9 @@ unexport DOCKER_DEFAULT_PLATFORM
 COMPOSE := docker compose
 TOOLS   := $(COMPOSE) run --rm --no-deps tools
 
-LABS    := sim-clinic sim-lab-a sim-lab-b sim-olink
+LABS    := sim-clinic sim-lab-a sim-lab-b sim-olink sim-rna sim-dna
 
-.PHONY: help up down reset ps logs test lint format lock data simulate deliver \
+.PHONY: help up down reset ps logs test lint format lock fetch data simulate deliver \
         demo chaos replay checksum golden
 
 help:  ## list targets
@@ -32,6 +32,9 @@ ps:  ## container status
 
 logs:  ## follow logs, e.g. make logs S=init
 	$(COMPOSE) logs -f $(S)
+
+fetch: .env  ## download open DNA/RNA data once and rebuild the omics deliveries
+	$(TOOLS) python scripts/fetch_open_data.py
 
 data: .env  ## regenerate the synthetic scenario files (fixed seed)
 	$(TOOLS) python scripts/generate_synthetic.py

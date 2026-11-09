@@ -13,3 +13,18 @@ test:NPX_CRP,Olink CRP (NPX),test
 test:NPX_TNF,Olink TNF (NPX),test
 test:NPX_IL6,Olink IL6 (NPX),test
 test:NPX_IL10,Olink IL10 (NPX),test
+gene:ERAP2,ERAP2 gene (Ensembl ENSG00000164308),gene
+variant:rs2248374,rs2248374 (dbSNP),variant
+variant:rs1205,rs1205 (dbSNP),variant
+variant:rs1800629,rs1800629 (dbSNP),variant
+variant:rs1800795,rs1800795 (dbSNP),variant
+variant:rs1800896,rs1800896 (dbSNP),variant
+test:EXPR_ERAP2,ERAP2 expression (RNA-seq),test
+test:EXPR_TNF,TNF expression (RNA-seq),test
+test:EXPR_IL6,IL6 expression (RNA-seq),test
+test:EXPR_IL10,IL10 expression (RNA-seq),test
+test:GT_RS2248374,Genotype rs2248374,test
+test:GT_RS1205,Genotype rs1205,test
+test:GT_RS1800629,Genotype rs1800629,test
+test:GT_RS1800795,Genotype rs1800795,test
+test:GT_RS1800896,Genotype rs1800896,test

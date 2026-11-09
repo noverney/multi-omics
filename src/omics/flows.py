@@ -3,9 +3,11 @@
 Run with `python -m omics.flows`: serves both deployments from this process.
 """
 
+import io
 import os
 import random
 
+import pandas as pd
 from prefect import flow, serve, task
 from prefect.cache_policies import NONE
 from prefect.deployments import run_deployment
@@ -14,6 +16,7 @@ from omics import bus, contracts, db, load, s3
 from omics.harmonize import FileContext, harmonize, stable_id
 from omics.models import Alert, SdtmFinding, UploadEvent
 from omics.parse import PARSERS
+from omics.quality import clean
 
 CONTRACTS = contracts.load_all()
 BY_SOURCE = {contract.source: contract for contract in CONTRACTS}
@@ -37,6 +40,21 @@ def fetch(event: UploadEvent) -> bytes:
     if s3.sha256(data) != event.sha256:
         raise ValueError(f"sha256 mismatch for {event.s3_uri}")
     return data
+
+
+@task(**RETRY)
+def keep_curated(upload: UploadEvent, source: str, rows: list[dict]) -> str:
+    """Store the full parsed file as Parquet in s3://curated/: bulk omics stay out of Postgres."""
+    buffer = io.BytesIO()
+    pd.DataFrame(rows).to_parquet(buffer, index=False)
+    key = f"{source}/{upload.sha256}.parquet"  # content-addressed: re-runs overwrite in place
+    s3.client().put_object(Bucket="curated", Key=key, Body=buffer.getvalue())
+    return f"s3://curated/{key}"
+
+
+def panel(rows: list[dict], code_column: str, codes: dict) -> list[dict]:
+    """Keep the rows whose code is in the contract's code map (what Postgres stores)."""
+    return [row for row in rows if clean(row.get(code_column)).upper() in codes]
 
 
 @task(**RETRY)
@@ -117,10 +135,14 @@ def ingest_file(event: dict) -> dict:
         return {"status": f"skipped: file already {previous}"}
     if contract is None:
         return reject(upload, f"no contract for lab {upload.lab!r}, file {upload.file_name!r}")
-    header, rows = PARSERS[contract.parser](fetch(upload))
+    header, rows = PARSERS[contract.parser](fetch(upload), contract)
     version = contract.version_for(header)
     if version is None:
         return reject(upload, f"header {header} matches no {contract.source} contract version")
+    if contract.curated:
+        keep_curated(upload, contract.source, rows)
+    if contract.panel_only:
+        rows = panel(rows, contract.versions[version]["code"], contract.codes)
     file = FileContext(
         stable_id(upload.sha256),
         upload.sha256,

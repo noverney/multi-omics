@@ -175,7 +175,11 @@ def measurement(
         raise Issue("UNKNOWN_CODE", f"{code!r} is not in the {contract.source} code map")
     concept = ref.concepts[concept_id]
     raw_value, raw_unit = clean(f.get("value")), clean_unit(f.get("unit"))
-    value, note = to_canonical(parse_decimal(raw_value), raw_unit, concept, ref.conversions)
+    if concept.scale == "categorical":  # a genotype: the call as text, ALT dosage as number
+        value, note, value_text = parse_decimal(raw_value), "", clean(f.get("value_text")) or None
+    else:
+        value, note = to_canonical(parse_decimal(raw_value), raw_unit, concept, ref.conversions)
+        value_text = None
     check_range(value, concept)  # hard data errors win over pending resolution
     if pending:
         raise pending
@@ -191,7 +195,7 @@ def measurement(
         "encounter_id": encounter_id,
         "observed_at": observed_at,
         "value_num": value,
-        "value_text": None,
+        "value_text": value_text,
         "unit": concept.unit,
         "nrind": nrind(value, concept),
         "qc_flag": clean(f.get("qc_flag")).upper() or "NOT_PROVIDED",

@@ -9,3 +9,17 @@ protein:P02741,measured_by,test:NPX_CRP
 protein:P01375,measured_by,test:NPX_TNF
 protein:P05231,measured_by,test:NPX_IL6
 protein:P22301,measured_by,test:NPX_IL10
+variant:rs2248374,in_gene,gene:ERAP2
+variant:rs1205,in_gene,gene:CRP
+variant:rs1800629,in_gene,gene:TNF
+variant:rs1800795,in_gene,gene:IL6
+variant:rs1800896,in_gene,gene:IL10
+variant:rs2248374,measured_by,test:GT_RS2248374
+variant:rs1205,measured_by,test:GT_RS1205
+variant:rs1800629,measured_by,test:GT_RS1800629
+variant:rs1800795,measured_by,test:GT_RS1800795
+variant:rs1800896,measured_by,test:GT_RS1800896
+gene:ERAP2,measured_by,test:EXPR_ERAP2
+gene:TNF,measured_by,test:EXPR_TNF
+gene:IL6,measured_by,test:EXPR_IL6
+gene:IL10,measured_by,test:EXPR_IL10

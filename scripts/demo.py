@@ -11,7 +11,7 @@ import httpx
 import psycopg
 from confluent_kafka import Consumer, TopicPartition
 
-from omics import settings
+from omics import contracts, settings
 from omics.cli import GOLDEN, SCENARIO, checksum, scenario_files, settle
 
 API = "http://api:8000"
@@ -53,16 +53,17 @@ def idempotency():
 
 @check("Entity resolution")
 def entity_resolution():
-    """Prove P001 is one person across 4 feeds; contradicting lab claims are caught."""
+    """Prove P001 is one person across every feed; contradicting lab claims are caught."""
+    feeds = len([c for c in contracts.load_all() if c.kind == "measurement"])
     (sources,) = one(
         "SELECT count(DISTINCT source) FROM sci.measurement WHERE participant_id = 'P001'"
     )
     (conflicts,) = one(
         "SELECT count(*) FROM ops.quarantine WHERE reason = 'SAMPLE_PARTICIPANT_CONFLICT'"
     )
-    return sources == 4 and conflicts == 1, (
-        f"P001 has data from {sources} sources; {conflicts} lab claim contradicting "
-        "the biobank was quarantined"
+    return sources == feeds and conflicts == 1, (
+        f"P001 has data from {sources}/{feeds} measurement feeds; {conflicts} lab claim "
+        "contradicting the biobank was quarantined"
     )
 
 
@@ -213,9 +214,29 @@ def consumers_caught_up(timeout: float = 120) -> None:
     while time.monotonic() < deadline:
         (models,) = one("SELECT count(*) FROM research.model_score")
         (uploads,) = one("SELECT count(*) FROM monitor.event_log WHERE topic = 'lab.uploads'")
-        if models == 3 and uploads == deliveries:
+        (eqtls,) = one("SELECT count(*) FROM research.eqtl")
+        if models == 3 and uploads == deliveries and eqtls > 0:
             return
         time.sleep(3)
+
+
+@check("Multi-omics")
+def multi_omics():
+    """Prove real DNA and RNA link up: the known ERAP2 eQTL (rs2248374) is recovered."""
+    (people,) = one(
+        "SELECT count(DISTINCT m.participant_id) FROM sci.measurement m"
+        " JOIN core.concept c USING (concept_id) WHERE c.domain = 'GF'"
+    )
+    row = one(
+        "SELECT n, r, p_value FROM research.eqtl WHERE variant = 'rs2248374' AND gene = 'ERAP2'"
+    )
+    passed = people == 60 and row is not None and float(row[1]) < -0.5 and row[2] < 1e-4
+    found = (
+        f"ERAP2 ~ rs2248374: r = {float(row[1]):.2f}, p = {row[2]:.0e}, n = {row[0]}"
+        if row
+        else "no eQTL"
+    )
+    return passed, f"genotypes + expression for {people} participants; {found}"
 
 
 @check("Determinism")

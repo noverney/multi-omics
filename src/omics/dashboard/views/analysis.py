@@ -68,3 +68,30 @@ with right:
     st.plotly_chart(style(fig, height=320))
     st.caption("NPX is relative: it tracks log2 CRP but is never converted to mg/L.")
     table(both[["usubjid", "CRP", "log2_crp", "NPX_CRP"]])
+
+st.subheader("Genotype → expression (real data: 1000 Genomes + Geuvadis)")
+eqtl = sql("SELECT variant, gene, n, slope, r, p_value FROM research.eqtl ORDER BY p_value")
+if eqtl.empty:
+    st.info("No eQTL yet: the DNA and RNA labs deliver with `make simulate`.")
+    st.stop()
+pairs = list(zip(eqtl.variant, eqtl.gene, strict=True))
+variant, gene = st.selectbox("Variant · gene", pairs, format_func=" · ".join)
+points = sql(
+    'SELECT g."USUBJID", g."STRESN" AS dosage, g."STRESC" AS genotype, e."STRESN" AS expression'
+    ' FROM api.research_findings g JOIN api.research_findings e USING ("USUBJID")'
+    " WHERE g.concept_id = %s AND e.concept_id = %s",
+    (f"GT_{variant.upper()}", f"EXPR_{gene}"),
+)
+chosen = eqtl[(eqtl.variant == variant) & (eqtl.gene == gene)].iloc[0]
+tiles = st.columns(3)
+tiles[0].metric("Correlation r", f"{chosen.r:.2f}")
+tiles[1].metric("p-value", f"{chosen.p_value:.1e}")
+tiles[2].metric("Change per ALT allele", f"{chosen.slope:+.1f} nRPKM", help=f"n = {chosen.n}")
+genotypes = points.sort_values("dosage").genotype.unique().tolist()
+fig = px.box(points, x="genotype", y="expression", points="all", hover_data=["USUBJID"],
+             category_orders={"genotype": genotypes}, color_discrete_sequence=[SERIES])  # fmt: skip
+fig.update_traces(marker=MARKER, line={"width": 2})
+fig.update_layout(xaxis_title=f"{variant} genotype", yaxis_title=f"{gene} expression, nRPKM")
+st.plotly_chart(style(fig, height=340))
+st.caption("Expression is from lymphoblastoid cells; nRPKM = Geuvadis PEER-normalized RPKM.")
+table(eqtl, "All tested variant–gene pairs")

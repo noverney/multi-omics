@@ -1,6 +1,7 @@
 -- Published contract: consumers (API, analysis, monitor) read these views, never the tables.
 -- Re-created on every init; grants are re-applied afterwards by 900_grants.sql.
-DROP VIEW IF EXISTS api.research_findings, api.lineage, api.quarantine, api.files,
+DROP VIEW IF EXISTS api.samples, api.ontology_edges,
+    api.research_findings, api.lineage, api.quarantine, api.files,
     api.sdtm_findings, api.sdtm_dm, api.participant_hold,
     api.measurement_history, api.measurement_current CASCADE;
 
@@ -102,3 +103,17 @@ CREATE VIEW api.files AS
 SELECT file_name, lab, source, status, attempts, rows_total, rows_loaded, rows_quarantined,
        error, warnings, size_bytes, reported_at, uploaded_at, updated_at, sha256
 FROM ops.ingest_file;
+
+-- Which participant each (pseudonymous) sample aliquot belongs to.
+CREATE VIEW api.samples AS
+SELECT s.sample_id, p.usubjid, s.specimen, s.collected_at
+FROM core.sample s
+JOIN core.participant p USING (participant_id);
+
+-- The ontology graph: variant -> gene -> protein -> test, with readable labels.
+CREATE VIEW api.ontology_edges AS
+SELECT e.src, s.label AS src_label, s.kind AS src_kind, e.rel,
+       e.dst, d.label AS dst_label, d.kind AS dst_kind
+FROM core.ontology_edge e
+JOIN core.ontology_node s ON s.node_id = e.src
+JOIN core.ontology_node d ON d.node_id = e.dst;

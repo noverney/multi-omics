@@ -10,5 +10,6 @@ st.navigation(
         st.Page("views/cohorts.py", title="Cohorts", icon=":material/hub:"),
         st.Page("views/lineage.py", title="Lineage", icon=":material/account_tree:"),
         st.Page("views/analysis.py", title="Analysis", icon=":material/query_stats:"),
+        st.Page("views/ontology.py", title="Ontology", icon=":material/schema:"),
     ]
 ).run()

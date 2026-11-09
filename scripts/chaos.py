@@ -11,7 +11,7 @@ import subprocess
 import sys
 import time
 
-LABS = ["sim-clinic", "sim-lab-a", "sim-lab-b", "sim-olink"]
+LABS = ["sim-clinic", "sim-lab-a", "sim-lab-b", "sim-olink", "sim-rna", "sim-dna"]
 ENV = {k: v for k, v in os.environ.items() if k != "DOCKER_DEFAULT_PLATFORM"}  # run native
 TIMELINE = [  # (seconds after the labs start, what happens, compose arguments)
     (2, "analysis consumer DOWN: research falls behind, ingestion does not", ["stop", "analysis"]),

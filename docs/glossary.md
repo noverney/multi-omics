@@ -42,4 +42,7 @@ flowchart LR
 | **Idempotent** | Processing the same input again changes nothing | file sha256, IDs, unique keys |
 | **Lineage** | The path from a published value back to its raw row and file | `api.lineage` |
 | **Contract** | One YAML file per source: column maps per version, natural key, code map | `contracts/*.yaml` |
-| **eQTL** (M6) | A genetic variant associated with a gene's expression level | `research.eqtl` |
+| **eQTL** | A genetic variant associated with a gene's expression level | `research.eqtl` |
+| **Dosage** | Number of ALT alleles in a genotype call: 0, 1 or 2 | GF `STRESN` |
+| **nRPKM** | Geuvadis expression: reads per kilobase per million, PEER-normalized | expression concepts |
+| **Curated** | Full omics files kept as Parquet in S3, outside Postgres | `s3://curated/` |

@@ -13,7 +13,8 @@ GRANT INSERT ON ops.audit_log TO api_ro;
 
 -- Research: research-safe views only (no raw rows, no held participants) + its own schema.
 GRANT USAGE ON SCHEMA api, research TO research_rw;
-GRANT SELECT ON api.research_findings, api.sdtm_dm, api.measurement_history TO research_rw;
+GRANT SELECT ON api.research_findings, api.sdtm_dm, api.measurement_history,
+    api.samples, api.ontology_edges TO research_rw;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA research TO research_rw;
 
 -- Dashboard: read-only over the published views and both consumers' outputs.

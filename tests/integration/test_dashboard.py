@@ -9,7 +9,9 @@ PAGES = ROOT / "src" / "omics" / "dashboard" / "views"
 pytestmark = pytest.mark.integration
 
 
-@pytest.mark.parametrize("page", ["system", "quality", "cohorts", "lineage", "analysis"])
+@pytest.mark.parametrize(
+    "page", ["system", "quality", "cohorts", "lineage", "analysis", "ontology"]
+)
 def test_page_renders(page):
     app = AppTest.from_file(str(PAGES / f"{page}.py"), default_timeout=30).run()
     assert not app.exception, app.exception

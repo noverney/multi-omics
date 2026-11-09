@@ -6,6 +6,7 @@ A working prototype of a multi-source, multi-omics measurement pipeline. It inge
 - [Data standards](docs/data-standards.md): LOINC, UCUM, UniProt and ISO 8601 in; CDISC SDTM out.
 - [Security and patient data](docs/security.md): what is enforced now and what production adds.
 - [Glossary](docs/glossary.md): strict definitions and a concept map.
+- [Open data sources](data/open/SOURCES.md): real 1000 Genomes DNA and Geuvadis RNA (`make fetch`).
 - [CLAUDE.md](CLAUDE.md): coding conventions (KISS, PEP 257, files under 1000 lines).
 
 ## Quickstart

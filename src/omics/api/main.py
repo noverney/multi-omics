@@ -92,10 +92,10 @@ def health() -> dict:
     return {"status": "ok"}
 
 
-@app.get("/sdtm/{domain}", tags=["data"])
+@app.get("/sdtm/{domain}", tags=["data"])  # GF = genomics findings
 def sdtm(
     request: Request,
-    domain: Literal["DM", "VS", "LB"],
+    domain: Literal["DM", "VS", "LB", "GF"],
     usubjid: str | None = None,
     testcd: str | None = None,
     limit: int = Query(1000, ge=1, le=10_000),

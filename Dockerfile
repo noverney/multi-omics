@@ -7,6 +7,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src
 
 WORKDIR /app
+# bcftools: slices public 1000 Genomes VCFs over HTTP (scripts/fetch_open_data.py).
+RUN apt-get update && apt-get install -y --no-install-recommends bcftools \
+    && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install -r requirements.txt
 COPY . .

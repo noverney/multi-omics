@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+from scipy import stats
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import StratifiedKFold, cross_val_score
@@ -47,3 +48,18 @@ def case_control_auc(features: pd.DataFrame, is_case: pd.Series) -> tuple[float,
     auc = cross_val_score(model, x, is_case, cv=folds, scoring="roc_auc").mean()
     weights = model.fit(x, is_case)[-1].coef_[0]
     return float(auc), {f: round(float(w), 3) for f, w in zip(MODEL_FEATURES, weights, strict=True)}
+
+
+def eqtl(genotypes: pd.DataFrame, expression: pd.DataFrame, pairs: list) -> pd.DataFrame:
+    """Regress expression on ALT-allele dosage for each cis (variant, gene) pair."""
+    rows = []
+    for variant, gene in pairs:
+        dosage = genotypes.loc[genotypes.variant == variant].set_index("usubjid").dosage
+        level = expression.loc[expression.gene == gene].set_index("usubjid").value
+        both = pd.concat([dosage, level], axis=1, join="inner").dropna()
+        if len(both) < 10 or both.dosage.nunique() < 2:
+            continue  # too few people, or no genetic variation to test
+        fit = stats.linregress(both.dosage, both.value)
+        rows.append({"variant": variant, "gene": gene, "n": len(both), "slope": fit.slope,
+                     "r": fit.rvalue, "p_value": fit.pvalue})  # fmt: skip
+    return pd.DataFrame(rows)

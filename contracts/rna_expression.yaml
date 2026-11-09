@@ -1,0 +1,23 @@
+# RNA lab: gene expression matrix (Geuvadis, open data), genes x samples, wide TSV.
+source: rna_expression
+lab: rna-lab
+kind: measurement
+parser: matrix                     # melted to one row per (gene, sample)
+id_columns: [TargetID, Gene_Symbol, Chr, Coord]
+file_pattern: 'geuvadis_rpkm_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id, code]
+panel_only: true                   # only the panel genes go to Postgres...
+curated: true                      # ...the whole matrix goes to s3://curated/ as Parquet
+ignore: [Gene_Symbol, Chr, Coord]
+versions:
+  1:
+    code: TargetID                 # keyed by stable Ensembl gene ID, never by symbol
+    sample_id: sample_id
+    value: value
+fixed:
+  unit: nRPKM                      # Geuvadis normalized RPKM (PEER-corrected)
+codes:
+  ENSG00000164308: EXPR_ERAP2
+  ENSG00000232810: EXPR_TNF
+  ENSG00000136244: EXPR_IL6
+  ENSG00000136634: EXPR_IL10

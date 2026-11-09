@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** M0–M5 built: everything the brief asks for, plus the analysis and monitoring consumers and the dashboard. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
+> **Status:** M0–M6 built: everything the brief asks for, plus the consumers, the dashboard and real open DNA/RNA data. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
 
 **Kafka carries messages, not data.**
 - Labs upload files to S3 and publish a small *claim-check* event (S3 URI + sha256).
@@ -43,7 +43,8 @@ flowchart LR
 | SeaweedFS (S3) | Holds the data itself; raw files are content-addressed, so they are never overwritten. MinIO's repo was archived in Apr 2026; SeaweedFS is Apache-2.0 and has run in production since 2012 |
 | Prefect | Retries, run history and UI for the pipelines; the reconcile flow re-runs stuck work |
 | Postgres | The harmonized store and pipeline state; domain separation via schemas and roles |
-| Analysis consumer | Research domain: features, outliers and a case/control model per study, kept current from `harmonized.sdtm` and `alerts`. Reads research-safe views only |
+| Curated Parquet (`s3://curated/`) | Omics bulk: the full RNA matrix and VCF land here; only a gene/variant panel goes to Postgres |
+| Analysis consumer | Research domain: features, outliers and a case/control model per study, kept current from `harmonized.sdtm` and `alerts`; cis-eQTLs computed with Dask from the curated Parquet. Reads research-safe views only |
 | Monitor consumer | Operations domain: logs every upload, alert and dead letter; consumer lag per group; `LAB_SILENT` freshness alerts |
 | Streamlit dashboard | System state, data quality, cohort graph, lineage, analysis. Chart colors validated for color-blind safety |
 | FastAPI | The unified access layer: SDTM records, history and lineage behind API keys and roles; every request audited ([security](security.md)) |
@@ -112,6 +113,19 @@ The five failures in `make chaos`:
 
 In one demo run the labs beat the clinic, so 601 rows waited for their master data. The checksum was still identical to the golden run, in which almost nothing waited.
 
+## Multi-omics with open data
+
+- **The data:**
+  - DNA: real 1000 Genomes genotypes.
+  - RNA: real Geuvadis expression, measured in the same individuals.
+  - Both were fetched once with `make fetch`; provenance is in `data/open/SOURCES.md`.
+- **The people:** the 60 individuals are relabelled to the biobank DNA/RNA aliquots of P001–P060. This simulation step is documented.
+- **The pipeline:**
+  - Parsers for a wide expression matrix and a VCF; genotypes become a categorical value (call as text, ALT dosage as number).
+  - The full omics files go to S3 as Parquet; only the gene/variant panel goes to Postgres.
+  - The analysis consumer reads the Parquet with Dask and joins DNA and RNA through `api.samples`.
+- **The result:** the known ERAP2 eQTL is recovered, rs2248374: **r = −0.89, p = 3e-21**, about −16.6 nRPKM per G allele. The other promoter variants are null in these cells, and CRP is absent from the RNA because it is made in the liver.
+
 ## Data model
 
 ```mermaid
@@ -155,5 +169,5 @@ erDiagram
 | M3 | Access and security: FastAPI (keys/roles, audit), DB roles, S3 identities | ✅ done |
 | M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | ✅ done |
 | M5 | Consumers and dashboards | ✅ done |
-| M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | planned |
+| M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | ✅ done |
 | M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | planned |

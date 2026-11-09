@@ -211,6 +211,8 @@ services:
     environment:
       DB_USER: research_rw
       DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
+      S3_ACCESS_KEY: ${S3_ANALYSIS_KEY:-analysis}       # read-only on curated/
+      S3_SECRET_KEY: ${S3_ANALYSIS_SECRET:-analysis-dev-secret}
     restart: unless-stopped
     depends_on:
       init: {condition: service_completed_successfully}
@@ -259,6 +261,12 @@ services:
   sim-olink:
     <<: *lab-sim
     environment: {<<: *lab-env, LAB: olink}
+  sim-rna:                        # open data: Geuvadis expression matrix
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: rna-lab}
+  sim-dna:                        # open data: 1000 Genomes genotypes (VCF)
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: dna-lab}
 
   # --- Ad-hoc commands: `docker compose run --rm tools pytest` (not started by `up`).
   tools:
