@@ -41,7 +41,7 @@ flowchart LR
 
 ## Quickstart
 
-You need Docker with about 6 GB of RAM. Then:
+You need Docker with about 6 GB of RAM. For a guided first run, with what you should see, where to click and how to connect an LLM, follow [QUICKSTART.md](QUICKSTART.md). In short:
 
 ```sh
 make demo       # clean run + one check per topic of the brief + replay (~3.5 min)
@@ -117,6 +117,7 @@ curl -s -H 'X-API-Key: research-key-dev' \
 
 | Doc | Contents |
 | --- | --- |
+| [Quickstart](QUICKSTART.md) | A guided first run: the demo, the UIs, the API, an LLM |
 | [Walkthrough](docs/walkthrough.md) | A 60-minute tour, and where every topic lives |
 | [Ask the data (MCP)](docs/agent.md) | Tools, guardrails, connecting any LLM, the worked drug-trial example |
 | [Architecture](docs/architecture.md) | Mermaid diagrams: system, one upload, file states, data model, resilience |
