@@ -6,11 +6,12 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 | --- | --- | --- |
 | 0–5 | The brief and its traps: the same person under 3 column names, 3200 ug/L = 3.2 mg/L, Olink linked only via the sample, NPX never converted | [architecture.md](architecture.md), deck slides 1–3 |
 | 5–10 | Architecture: Kafka for messages, S3 for data; one upload end to end | the system and sequence diagrams |
-| 10–20 | **Live run**: `make demo`. While it runs, open the Redpanda Console (topics, 3 brokers), Prefect (flow runs, retries) and SeaweedFS (raw files by sha256) | `make demo` output: 15 ✅ + replay |
-| 20–32 | **Code tour**, about 2 minutes per file | see "Code, in reading order" below |
-| 32–40 | **What can be queried**: API with a research vs an ops key; the lineage of one value; dashboard pages | <http://localhost:8000/docs>, <http://localhost:8501> |
-| 40–48 | **Resilience**: chaos timeline and result, the golden checksum, replay, order independence (over 1000 rows waited, same checksum) | `make chaos` output |
-| 48–54 | **Multi-omics**: real DNA + RNA, ERAP2 eQTL, ontology graph, curated Parquet + Dask | dashboard Analysis + Ontology pages |
+| 10–18 | **Live run**: `make demo`. While it runs, open the Redpanda Console (topics, 3 brokers), Prefect (flow runs, retries) and SeaweedFS (raw files by sha256) | `make demo` output: 16 ✅ + replay |
+| 18–26 | **Code tour**, about 1 minute per file | see "Code, in reading order" below |
+| 26–32 | **What can be queried**: API with a research vs an ops key; the lineage of one value; dashboard pages | <http://localhost:8000/docs>, <http://localhost:8501> |
+| 32–38 | **Resilience**: chaos timeline and result, the golden checksum, replay, order independence (over 1000 rows waited, same checksum) | `make chaos` output |
+| 38–46 | **Multi-omics and the trial**: real DNA + RNA, ERAP2 eQTL, IBD-04 drug response by genotype, curated Parquet + Dask | dashboard Analysis + Ontology pages |
+| 46–54 | **Ask the data with an LLM**: connect Claude to the MCP server, ask "did OMX-101 work, for whom, is the target there?", watch it explore, query, save a pipeline and a dashboard; show the YAML subtree and the audit rows | [agent.md](agent.md), <http://localhost:8501/omx101_trial> |
 | 54–60 | Tradeoffs, omissions, scale path | [decisions.md](decisions.md) |
 
 ## Code, in reading order
@@ -21,7 +22,8 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 4. `src/omics/load.py`: one transaction, append-only insert, quarantine, retry to a fixed point, outbox.
 5. `src/omics/flows.py`: the Prefect flow (fetch, load, publish) and `reconcile`.
 6. `src/omics/services/dispatcher.py`: register first, then run; offsets committed last.
-7. `db/repeatable/100_api_views.sql`: current/history views, SDTM views, the research rule.
+7. `db/repeatable/100_api_views.sql`: current/history views, SDTM views, the research rule, the knowledge graph.
+8. `src/omics/agent/server.py` + `workspace.py`: the MCP tools, the guardrails, pipelines as views, dashboards as specs.
 
 ## If asked about…
 

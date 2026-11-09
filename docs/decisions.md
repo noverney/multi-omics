@@ -12,6 +12,8 @@ Each entry gives the choice, why it was made, and what production would add.
 | **Prefect for pipelines** | Retries, run history and a UI with almost no code; `reconcile` is a scheduled flow | Work pools on Kubernetes, concurrency limits per source, automations/alerts on failed runs |
 | **One generic flow, contract per source** | Onboarding a lab = one YAML file; the code stays small | A contract registry with CI checks, versioned in its own repo |
 | **Postgres for the harmonized store** | Constraints, transactions, roles and views give idempotency, domain separation and a published contract | Partition `sci.measurement` by time/source; omics matrices in Iceberg/Delta (already Parquet in `curated/`), queried with Spark/Trino |
+| **LLM access through MCP** | One open protocol that Claude, OpenAI, Gemini and others already speak; the tools are plain functions, so another protocol adapter is a few lines | OAuth 2.1 per user (MCP authorization spec), a model hosted where the data may go |
+| **LLMs build declaratively** | Pipelines are SQL views and dashboards are YAML specs: reviewable, replayable, and the database role is the guardrail. No generated code is executed | A review step (pull request) before a workspace artifact is shared |
 | **No Spark, no Neo4j (yet)** | Data volume doesn't need them; the brief asks for simple tech | Spark when matrices outgrow one node; the ontology stays relational until it reaches pathway/PPI scale, then a graph store |
 
 ## Data semantics

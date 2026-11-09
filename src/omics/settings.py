@@ -20,6 +20,12 @@ DB_DSN = make_conninfo(
     user=env("DB_USER", "pipeline_rw"),
     password=env("DB_PASSWORD", "pipeline-dev"),
 )
+# The agent workspace's owner: LLM-built pipelines are refreshed with this identity only.
+WORKSPACE_DSN = make_conninfo(
+    DB_DSN,
+    user=env("WORKSPACE_DB_USER", "agent_rw"),
+    password=env("WORKSPACE_DB_PASSWORD", "agent-dev"),
+)
 KAFKA_BROKERS = env("KAFKA_BROKERS", "redpanda-0:9092,redpanda-1:9092,redpanda-2:9092")
 S3_ENDPOINT = env("S3_ENDPOINT", "http://seaweedfs:8333")
 S3_ACCESS_KEY = env("S3_ACCESS_KEY", "pipeline")

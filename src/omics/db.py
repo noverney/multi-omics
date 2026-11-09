@@ -16,6 +16,7 @@ ROLES = {
     "research_rw": ("RESEARCH_DB_PASSWORD", "research-dev"),
     "monitor_rw": ("MONITOR_DB_PASSWORD", "monitor-dev"),
     "dashboard_ro": ("DASHBOARD_DB_PASSWORD", "dashboard-dev"),
+    "agent_rw": ("AGENT_DB_PASSWORD", "agent-dev"),
 }
 
 # Reference CSV -> (table, primary key), in foreign-key order.

@@ -11,6 +11,7 @@ from prefect.deployments import run_deployment
 from psycopg.rows import dict_row
 
 from omics import bus, db, s3, settings
+from omics.agent import workspace
 from omics.models import UploadEvent
 
 SCENARIO = settings.ROOT / "data" / "scenario"
@@ -78,7 +79,10 @@ def cmd_init(_: argparse.Namespace) -> None:
         db.ensure_roles(conn)
         applied = db.migrate(conn, settings.ROOT / "db")
         db.seed_reference(conn, settings.ROOT / "reference")
+        conn.execute("SET ROLE agent_rw")  # the workspace owner rebuilds its own views
+        restored = workspace.restore(conn)  # views on api.* were dropped with them (CASCADE)
     print(f"db: migrations applied {applied or 'none (up to date)'}; reference data seeded")
+    print(f"workspace: {len(restored)} LLM-built pipelines restored from workspace/")
     created = retry(lambda: s3.ensure_buckets(s3.client()), "s3")
     print(f"s3: buckets ready (created {created or 'none'})")
     admin = bus.admin()

@@ -1,6 +1,6 @@
 -- Published contract: consumers (API, analysis, monitor) read these views, never the tables.
 -- Re-created on every init; grants are re-applied afterwards by 900_grants.sql.
-DROP VIEW IF EXISTS api.samples, api.ontology_edges, api.study_arms,
+DROP VIEW IF EXISTS api.samples, api.ontology_edges, api.ontology_nodes, api.study_arms,
     api.research_findings, api.lineage, api.quarantine, api.files,
     api.sdtm_findings, api.sdtm_dm, api.participant_hold,
     api.measurement_history, api.measurement_current CASCADE;
@@ -119,10 +119,59 @@ SELECT s.sample_id, p.usubjid, s.specimen, s.collected_at, s.visit
 FROM core.sample s
 JOIN core.participant p USING (participant_id);
 
--- The ontology graph: variant -> gene -> protein -> test, with readable labels.
+-- The knowledge graph that LLMs and the dashboard read: the curated ontology, nodes derived
+-- from reference data (studies, arms, every test), the documented datasets (a COMMENT makes
+-- a dataset node, see 110_catalog.sql) and the agent workspace subtree.
+CREATE VIEW api.ontology_nodes AS
+SELECT DISTINCT ON (node_id) node_id, label, kind, definition
+FROM (
+    SELECT node_id, label, kind, definition, 1 AS rank FROM core.ontology_node
+    UNION ALL
+    SELECT 'test:' || concept_id, test_name || ' (' || concept_id || ')', 'test',
+           category || ' in SDTM ' || domain || ', unit ' || coalesce(unit, 'none: categorical')
+           || ', ' || vocabulary || ' ' || code, 2  -- curated test nodes win over these
+    FROM core.concept
+    UNION ALL
+    SELECT 'study:' || study_id, study_id || ': ' || title, 'study', disease_area || ' study', 1
+    FROM core.study
+    UNION ALL
+    SELECT 'arm:' || study_id || '/' || armcd, study_id || ' ' || armcd || ': ' || arm, 'arm',
+           initcap(arm_type) || ' arm of ' || study_id, 1
+    FROM core.study_arm
+    UNION ALL
+    SELECT 'dataset:' || n.nspname || '.' || c.relname, n.nspname || '.' || c.relname, 'dataset',
+           obj_description(c.oid, 'pg_class'), 1
+    FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+    WHERE n.nspname IN ('api', 'research') AND obj_description(c.oid, 'pg_class') IS NOT NULL
+    UNION ALL
+    SELECT 'workspace', 'Agent workspace (workspace/)', 'workspace',
+           'Pipelines and dashboards that LLMs built through the MCP server.', 1
+    UNION ALL
+    SELECT kind || ':' || name, title, kind, description, 1 FROM workspace.artifact
+) nodes
+ORDER BY node_id, rank;
+
 CREATE VIEW api.ontology_edges AS
+WITH edges (src, rel, dst) AS (
+    SELECT src, rel, dst FROM core.ontology_edge
+    UNION ALL
+    SELECT 'study:' || study_id, 'studies', disease_id FROM core.study
+    WHERE disease_id IS NOT NULL
+    UNION ALL
+    SELECT 'study:' || study_id, 'has_arm', 'arm:' || study_id || '/' || armcd
+    FROM core.study_arm
+    UNION ALL
+    SELECT 'arm:' || study_id || '/' || armcd, 'administers', drug FROM core.study_arm
+    WHERE drug IS NOT NULL
+    UNION ALL
+    SELECT 'test:' || concept_id, 'stored_in', 'dataset:api.research_findings' FROM core.concept
+    UNION ALL
+    SELECT 'workspace', 'contains', kind || ':' || name FROM workspace.artifact
+    UNION ALL
+    SELECT src, rel, dst FROM workspace.link
+)
 SELECT e.src, s.label AS src_label, s.kind AS src_kind, e.rel,
        e.dst, d.label AS dst_label, d.kind AS dst_kind
-FROM core.ontology_edge e
-JOIN core.ontology_node s ON s.node_id = e.src
-JOIN core.ontology_node d ON d.node_id = e.dst;
+FROM edges e
+JOIN api.ontology_nodes s ON s.node_id = e.src
+JOIN api.ontology_nodes d ON d.node_id = e.dst;

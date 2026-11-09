@@ -1,0 +1,21 @@
+name: omx101_response_by_group
+title: 'IBD-04: did OMX-101 work? Response per arm and ERAP2 group'
+description: Median CRP ratio (week 12 / baseline) and mean change in IL6 and TNF
+  (NPX) per arm and rs2248374 group, with n. Below 1 means CRP fell.
+sql: |-
+  SELECT arm,
+    erap2_group,
+    count(*) AS n,
+    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY crp_ratio)::numeric, 2) AS median_crp_ratio,
+    round(avg(il6_change_npx), 2) AS mean_il6_change_npx,
+    round(avg(tnf_change_npx), 2) AS mean_tnf_change_npx
+  FROM workspace.omx101_participants
+  GROUP BY arm, erap2_group
+  ORDER BY erap2_group, arm
+uses:
+- drug:OMX-101
+- variant:rs2248374
+- test:CRP
+- test:NPX_IL6
+- test:NPX_TNF
+created_by: claude

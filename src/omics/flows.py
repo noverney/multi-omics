@@ -1,6 +1,8 @@
-"""Prefect flows: `ingest-file` runs once per upload; `reconcile` is the safety net.
+"""Prefect flows: ingest each upload, reconcile stuck files, refresh LLM-built pipelines.
 
-Run with `python -m omics.flows`: serves both deployments from this process.
+`ingest-file` runs once per upload; `reconcile` is the safety net; `refresh-workspace`
+keeps the agent workspace's pipelines current. Run with `python -m omics.flows`: it serves
+all three deployments from this process.
 """
 
 import io
@@ -8,11 +10,13 @@ import os
 import random
 
 import pandas as pd
+import psycopg
 from prefect import flow, serve, task
 from prefect.cache_policies import NONE
 from prefect.deployments import run_deployment
 
-from omics import bus, contracts, db, load, s3
+from omics import bus, contracts, db, load, s3, settings
+from omics.agent import workspace
 from omics.harmonize import FileContext, harmonize, stable_id
 from omics.models import Alert, SdtmFinding, UploadEvent
 from omics.parse import PARSERS
@@ -175,9 +179,25 @@ def reconcile(stale_seconds: int = 90) -> dict:
     return {"rerun": len(stuck)} | publish()
 
 
+@task(**RETRY, task_run_name="refresh {name}")
+def refresh_pipeline(name: str) -> int:
+    """Re-run one LLM-built pipeline as the workspace owner (never as the pipeline role)."""
+    with psycopg.connect(settings.WORKSPACE_DSN, autocommit=True) as conn:
+        return workspace.refresh(conn, name)
+
+
+@flow(name="refresh-workspace")
+def refresh_workspace() -> dict:
+    """Refresh every pipeline in the agent workspace (files added by hand are built first)."""
+    with psycopg.connect(settings.WORKSPACE_DSN, autocommit=True) as conn:
+        workspace.restore(conn)
+    return {spec.name: refresh_pipeline(spec.name) for spec in workspace.specs("pipeline")}
+
+
 if __name__ == "__main__":
     serve(
         ingest_file.to_deployment(name="main"),
         reconcile.to_deployment(name="main", interval=60),
+        refresh_workspace.to_deployment(name="main", interval=30),
         limit=int(os.environ.get("FLOW_CONCURRENCY", "2")),
     )

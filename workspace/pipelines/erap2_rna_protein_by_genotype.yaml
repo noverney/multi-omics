@@ -1,0 +1,19 @@
+name: erap2_rna_protein_by_genotype
+title: 'IBD-04: is the drug target there? ERAP2 RNA and protein per genotype'
+description: 'Per rs2248374 genotype: n, median ERAP2 RNA (nRPKM, real Geuvadis) and
+  median ERAP2 protein (Olink NPX, log2 relative) at baseline in the same people.'
+sql: |-
+  SELECT genotype,
+    count(*) AS n,
+    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY erap2_rna_nrpkm)::numeric, 1) AS median_rna_nrpkm,
+    round(percentile_cont(0.5) WITHIN GROUP (ORDER BY erap2_protein_npx)::numeric, 2) AS median_protein_npx
+  FROM workspace.omx101_participants
+  GROUP BY genotype
+  ORDER BY genotype
+uses:
+- variant:rs2248374
+- gene:ERAP2
+- protein:Q6P179
+- test:EXPR_ERAP2
+- test:NPX_ERAP2
+created_by: claude

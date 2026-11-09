@@ -3,18 +3,22 @@
 Each check returns (passed, evidence). The same checks run as integration tests.
 """
 
+import asyncio
 import sys
 import time
 from decimal import Decimal
 
 import httpx
+import httpx2
 import psycopg
 from confluent_kafka import Consumer, TopicPartition
+from mcp import Client
+from mcp.client.streamable_http import streamable_http_client
 
 from omics import contracts, settings
 from omics.cli import GOLDEN, SCENARIO, checksum, scenario_files, settle
 
-API = "http://api:8000"
+API, AGENT = "http://api:8000", "http://agent:8001/mcp"
 OPEN_PEOPLE = len((settings.ROOT / "data/open/sample_map.csv").read_text().splitlines()) - 1
 RESEARCH, OPS = {"X-API-Key": "research-key-dev"}, {"X-API-Key": "ops-key-dev"}
 P001_LAB_B = "304a94fc-27af-5a29-9bde-fecfed02ae04"  # uuid5(lab_b, S200, HSCRP)
@@ -272,6 +276,40 @@ def drug_response():
         f"CRP week 12 / baseline: OMX-101 x{drug[1]:.2f} in rs2248374-A carriers (n={drug[0]})"
         f" vs placebo x{placebo[1]:.2f} (n={placebo[0]}); OMX-101 in G/G x{gg[1]:.2f}"
         f" (n={gg[0]}): no ERAP2, no effect"
+    )
+
+
+async def mcp_probe() -> tuple:
+    """Talk to the MCP server like any LLM client: tools, the ERAP2 graph, the fence."""
+    async with httpx2.AsyncClient(
+        headers={"Authorization": "Bearer agent-token-dev"},
+        timeout=httpx2.Timeout(30.0, read=300.0),
+    ) as http:
+        async with Client(streamable_http_client(AGENT, http_client=http)) as client:
+            tools = (await client.list_tools()).tools
+            found = await client.call_tool("search_ontology", {"text": "ERAP2"})
+            fence = await client.call_tool("run_query", {"sql": "SELECT * FROM ops.quarantine"})
+            built = await client.call_tool("list_workspace", {})
+    return tools, found.structured_content["result"], fence, built.structured_content["result"]
+
+
+@check("LLM access (MCP)")
+def llm_access():
+    """Prove any MCP client can walk the ontology and query, but only research-safe data."""
+    deadline = time.monotonic() + 60  # restored pipelines fill on the next 30 s refresh
+    while True:
+        tools, found, fence, built = asyncio.run(mcp_probe())
+        empty = [a["name"] for a in built if a["kind"] == "pipeline" and not a["row_count"]]
+        if not empty or time.monotonic() > deadline:
+            break
+        time.sleep(5)
+    kinds = sorted({node["kind"] for node in found})
+    (audited,) = one("SELECT count(*) FROM ops.audit_log WHERE role = 'agent'")
+    passed = len(tools) == 8 and {"gene", "protein", "drug"} <= set(kinds) and fence.is_error
+    return passed and not empty and audited > 0, (
+        f"{len(tools)} tools; 'ERAP2' -> {len(found)} nodes ({', '.join(kinds)});"
+        f" ops.quarantine refused; {audited} agent calls audited;"
+        f" workspace: {len(built)} LLM-built artifacts restored and refreshed"
     )
 
 

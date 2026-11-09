@@ -27,6 +27,7 @@ Everything runs in Docker. The host needs Docker with about 6 GB of RAM, plus `m
 | API docs | <http://localhost:8000/docs> | header `X-API-Key`: `research-key-dev` or `ops-key-dev` |
 | Redpanda Console | <http://localhost:8080> | none |
 | Prefect | <http://localhost:4200> | none |
+| MCP server (LLMs) | <http://localhost:8001/mcp> | header `Authorization: Bearer agent-token-dev` |
 | SeaweedFS filer | <http://localhost:8888> | none |
 | Postgres | `localhost:5433`, db `omics` | `omics` / `omics-admin` (dev only) |
 
@@ -39,6 +40,10 @@ Everything runs in Docker. The host needs Docker with about 6 GB of RAM, plus `m
 - **A file is stuck before PUBLISHED:**
   - `reconcile` re-runs it within ~2 minutes; check the Prefect UI.
   - `make logs S=flow-runner` shows the cause.
+- **Claude Code doesn't list the `omics` tools:**
+  - Run `make up` first; the server is `agent` on port 8001.
+  - A new project server from `.mcp.json` needs approval. Reload the window or run `/mcp`.
+- **An LLM-built dashboard shows "not available yet":** its pipeline is rebuilt at init and refreshed every 30 s by the Prefect `refresh-workspace` flow.
 - **The checksum differs from golden:**
   - If you changed mapping logic or reference data on purpose, run `make demo`, review the result, then `make golden`.
   - Otherwise, investigate: the result must not depend on timing.

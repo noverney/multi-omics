@@ -28,6 +28,7 @@ The whole repo must be explainable in a **1-hour walkthrough**.
 - `sci.measurement` is append-only; "current" is a view.
 - Lab-provided participant/sample pairs are checked against the operational masters (enrollment, biobank).
 - Patient data stays pseudonymous: no names, addresses or birth dates. Outputs follow CDISC SDTM.
+- LLMs reach data only through the MCP server (role `agent_rw`: research-safe views + the `workspace` schema). What they build is declarative (SQL views, dashboard specs) and lives in `workspace/`; never execute generated code.
 
 ## Workflow
 - Main commands: `make up | test | lint | format | reset`; `make help` lists the rest.

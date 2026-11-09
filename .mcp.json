@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "omics": {
+      "type": "http",
+      "url": "http://localhost:8001/mcp",
+      "headers": {
+        "Authorization": "Bearer ${OMICS_AGENT_TOKEN:-agent-token-dev}"
+      }
+    }
+  }
+}

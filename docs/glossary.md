@@ -55,3 +55,8 @@ flowchart LR
 | **Dosage** | Number of ALT alleles in a genotype call: 0, 1 or 2 | GF `STRESN` |
 | **nRPKM** | Geuvadis expression: reads per kilobase per million, PEER-normalized | expression concepts |
 | **Curated** | Full omics files kept as Parquet in S3, outside Postgres | `s3://curated/` |
+| **Knowledge graph** | Every concept as a node (gene, protein, variant, test, drug, disease, study, arm, dataset) with typed edges; the ontology LLMs query | `api.ontology_nodes`, `api.ontology_edges` |
+| **MCP** | Model Context Protocol: the open standard LLM clients use to call tools on a server | `src/omics/agent/server.py`, port 8001 |
+| **Workspace** | What LLMs built: pipelines and dashboards, saved as YAML, graph nodes and pages | `workspace/`, schema `workspace` |
+| **Pipeline (workspace)** | One saved SELECT, materialized as `workspace.<name>` and refreshed by Prefect | `workspace/pipelines/*.yaml` |
+| **Dashboard spec** | A page of panels (chart type + pipeline columns), rendered live by Streamlit | `workspace/dashboards/*.yaml` |

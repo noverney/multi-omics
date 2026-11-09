@@ -17,6 +17,7 @@ The data is synthetic, but the prototype treats it as real patient data.
 | Immutable raw data | keys `raw/<lab>/<sha256>/<file>` | A delivery can never be overwritten; re-sends land on the same object |
 | Integrity check | `flows.fetch` | A file whose sha256 differs from the announced one is not processed |
 | Secrets kept out of git | `.env` (git-ignored) | Each container receives only its own credentials |
+| LLM access through one door | MCP server (`src/omics/agent/server.py`), role `agent_rw` | LLMs see research-safe views only, run one read-only SELECT at a time (5 s, 500 rows), and write only into the `workspace` schema and folder. One bearer token per client; every tool call is audited. Details in [agent.md](agent.md#guardrails-in-the-database-not-the-prompt) |
 
 ## Production additions (documented, not built)
 
@@ -28,6 +29,10 @@ The data is synthetic, but the prototype treats it as real patient data.
 - **Network:** segmentation, with only the API gateway exposed.
 - **Retention:** a policy that reconciles GDPR erasure with regulatory retention.
 - **Audit-log monitoring:** alerts on unusual access volume.
+- **LLM access:**
+  - Per-user OAuth 2.1 tokens, as the MCP authorization spec describes.
+  - Subject-level data sent only to a self-hosted model or a provider under a BAA/DPA, or an aggregate-only role with a minimum cell size.
+  - Workspace changes reviewed as pull requests.
 
 ## Regulatory principles
 

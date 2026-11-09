@@ -1,5 +1,6 @@
 # Local simulation of the platform. Infrastructure first, then our Python services
-# (one shared image). Host ports: console 8080, prefect 4200, seaweedfs 8888/8333, postgres 5433.
+# (one shared image). Host ports: console 8080, prefect 4200, seaweedfs 8888/8333, postgres 5433,
+# api 8000, MCP server (agent) 8001, dashboard 8501.
 name: omics
 
 x-app: &app
@@ -157,6 +158,7 @@ services:
       RESEARCH_DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
       MONITOR_DB_PASSWORD: ${MONITOR_DB_PASSWORD:-monitor-dev}
       DASHBOARD_DB_PASSWORD: ${DASHBOARD_DB_PASSWORD:-dashboard-dev}
+      AGENT_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
     restart: "no"
     depends_on:
       postgres: {condition: service_healthy}
@@ -172,6 +174,8 @@ services:
     environment:
       <<: *pipeline-env
       FLOW_CONCURRENCY: "2"
+      WORKSPACE_DB_USER: agent_rw  # refresh-workspace runs as the workspace owner
+      WORKSPACE_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
     restart: unless-stopped
     depends_on:
       init: {condition: service_completed_successfully}
@@ -240,6 +244,24 @@ services:
       init: {condition: service_completed_successfully}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- LLM access (MCP): any MCP client explores the ontology and builds workspace pipelines.
+  agent:
+    <<: *app
+    command: uvicorn omics.agent.server:app --host 0.0.0.0 --port 8001
+    environment:
+      DB_USER: agent_rw        # research-safe views + its own workspace schema, nothing else
+      DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
+      AGENT_TOKENS: ${AGENT_TOKENS:-claude:agent-token-dev}
+    ports: ["8001:8001"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8001), 2)"]
       interval: 5s
       timeout: 5s
       retries: 20

@@ -35,6 +35,10 @@ flowchart LR
   mon --> pg
   pg --> api["FastAPI<br/>SDTM · API keys · audit"]
   pg --> ui["Streamlit<br/>dashboards"]
+  llm(["any LLM client<br/>Claude · OpenAI · Gemini"]) -- "MCP + bearer token" --> agent["MCP server<br/>ontology · queries · workspace"]
+  agent <--> pg
+  agent --> ws[("workspace/<br/>pipelines + dashboards YAML")]
+  ws --> ui
 ```
 
 | Component | Why it is there |
@@ -47,6 +51,7 @@ flowchart LR
 | Analysis consumer | Research domain: features, outliers and a case/control model per study, kept current from `harmonized.sdtm` and `alerts`; cis-eQTLs computed with Dask from the curated Parquet. Reads research-safe views only |
 | Monitor consumer | Operations domain: logs every upload, alert and dead letter; consumer lag per group; `LAB_SILENT` freshness alerts |
 | Streamlit dashboard | System state, data quality, cohort graph, lineage, analysis. Chart colors validated for color-blind safety |
+| MCP server (`agent`) | The LLM door: any MCP client explores the knowledge graph, queries research-safe views and saves pipelines (materialized views, refreshed by the Prefect `refresh-workspace` flow) and dashboards as YAML under `workspace/` ([agent](agent.md)) |
 | FastAPI | The unified access layer: SDTM records, history and lineage behind API keys and roles; every request audited ([security](security.md)) |
 
 ## One upload, end to end
@@ -173,6 +178,7 @@ erDiagram
 | `api` | (views) | the published contract, readable by api_ro, research_rw and monitor_rw |
 | `research` | research_rw | analysis consumer output |
 | `monitor` | monitor_rw | monitor consumer output |
+| `workspace` | agent_rw | what LLMs build: one materialized view per pipeline, plus the registry and graph links (`artifact`, `link`) |
 
 ## Milestones
 
@@ -188,4 +194,4 @@ erDiagram
 | M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | ✅ done |
 | M8 | Repo hygiene: index cache out of the tree, README layout | ✅ done |
 | M9 | Drug trial IBD-04: arms as reference data, visits, ERAP2 protein, drug-response check | ✅ done |
-| M10 | Ontology for LLMs: MCP server, agent workspace (pipelines + dashboards as a subtree) | planned |
+| M10 | Ontology for LLMs: MCP server, agent workspace (pipelines + dashboards as a subtree) | ✅ done |
