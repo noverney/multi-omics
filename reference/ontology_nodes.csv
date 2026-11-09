@@ -1,0 +1,15 @@
+node_id,label,kind
+gene:CRP,CRP gene (Ensembl ENSG00000132693),gene
+gene:TNF,TNF gene (Ensembl ENSG00000232810),gene
+gene:IL6,IL6 gene (Ensembl ENSG00000136244),gene
+gene:IL10,IL10 gene (Ensembl ENSG00000136634),gene
+protein:P02741,C-reactive protein (UniProt P02741),protein
+protein:P01375,Tumor necrosis factor (UniProt P01375),protein
+protein:P05231,Interleukin-6 (UniProt P05231),protein
+protein:P22301,Interleukin-10 (UniProt P22301),protein
+test:CRP,Serum CRP (LOINC 1988-5),test
+test:HSCRP,Serum hs-CRP (LOINC 30522-7),test
+test:NPX_CRP,Olink CRP (NPX),test
+test:NPX_TNF,Olink TNF (NPX),test
+test:NPX_IL6,Olink IL6 (NPX),test
+test:NPX_IL10,Olink IL10 (NPX),test

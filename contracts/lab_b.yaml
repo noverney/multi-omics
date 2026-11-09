@@ -1,0 +1,24 @@
+# Lab B: reference lab, hs-CRP in ug/L (the brief's "Lab B" table).
+source: lab_b
+lab: lab-b
+kind: measurement
+parser: csv
+file_pattern: 'lab_b_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id, code]
+versions:
+  1:
+    participant_id: subject
+    sample_id: specimen
+    code: test_code
+    value: result
+    unit: unit
+    observed_at: collection_date
+  2:                              # schema evolution: `result` renamed, extra `flag` column kept raw
+    participant_id: subject
+    sample_id: specimen
+    code: test_code
+    value: result_value
+    unit: unit
+    observed_at: collection_date
+codes:
+  HSCRP: HSCRP                    # same analyte as Lab A's CRP, high-sensitivity method

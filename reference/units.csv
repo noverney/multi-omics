@@ -1,0 +1,13 @@
+from_unit,to_unit,factor
+/min,/min,1
+bpm,/min,1
+mm[Hg],mm[Hg],1
+mmHg,mm[Hg],1
+kg,kg,1
+g,kg,0.001
+lb,kg,0.45359237
+mg/L,mg/L,1
+ug/L,mg/L,0.001
+ng/mL,mg/L,0.001
+mg/dL,mg/L,10
+NPX,NPX,1

@@ -1,0 +1,11 @@
+src,rel,dst
+gene:CRP,encodes,protein:P02741
+gene:TNF,encodes,protein:P01375
+gene:IL6,encodes,protein:P05231
+gene:IL10,encodes,protein:P22301
+protein:P02741,measured_by,test:CRP
+protein:P02741,measured_by,test:HSCRP
+protein:P02741,measured_by,test:NPX_CRP
+protein:P01375,measured_by,test:NPX_TNF
+protein:P05231,measured_by,test:NPX_IL6
+protein:P22301,measured_by,test:NPX_IL10

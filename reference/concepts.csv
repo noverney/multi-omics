@@ -1,0 +1,10 @@
+concept_id,testcd,test_name,domain,category,method,vocabulary,code,unit,scale,plausible_low,plausible_high,ref_low,ref_high
+HR,HR,Heart Rate,VS,VITAL SIGNS,,LOINC,8867-4,/min,absolute,20,250,60,100
+SYSBP,SYSBP,Systolic Blood Pressure,VS,VITAL SIGNS,,LOINC,8480-6,mm[Hg],absolute,50,260,90,130
+WEIGHT,WEIGHT,Weight,VS,VITAL SIGNS,,LOINC,29463-7,kg,absolute,2,300,,
+CRP,CRP,C Reactive Protein,LB,CHEMISTRY,IMMUNOTURBIDIMETRY,LOINC,1988-5,mg/L,absolute,0,500,0,5
+HSCRP,CRP,C Reactive Protein,LB,CHEMISTRY,HIGH SENSITIVITY IMMUNOASSAY,LOINC,30522-7,mg/L,absolute,0,500,0,3
+NPX_CRP,CRP,C Reactive Protein,LB,PROTEOMICS,PROXIMITY EXTENSION ASSAY,UniProt,P02741,NPX,relative_log2,-10,30,,
+NPX_TNF,TNFA,Tumor Necrosis Factor Alpha,LB,PROTEOMICS,PROXIMITY EXTENSION ASSAY,UniProt,P01375,NPX,relative_log2,-10,30,,
+NPX_IL6,IL6,Interleukin 6,LB,PROTEOMICS,PROXIMITY EXTENSION ASSAY,UniProt,P05231,NPX,relative_log2,-10,30,,
+NPX_IL10,IL10,Interleukin 10,LB,PROTEOMICS,PROXIMITY EXTENSION ASSAY,UniProt,P22301,NPX,relative_log2,-10,30,,

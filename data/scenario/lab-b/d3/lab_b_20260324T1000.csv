@@ -1,0 +1,6 @@
+subject,specimen,test_code,result_value,unit,collection_date,flag
+P001,S230,HSCRP,3994,ug/L,2026-03-24,H
+P003,S231,HSCRP,5209,ug/L,2026-03-24,
+P005,S232,HSCRP,4799,ug/L,2026-03-24,
+P007,S233,HSCRP,3035,ug/L,2026-03-24,H
+P009,S234,HSCRP,4778,ug/L,2026-03-24,
