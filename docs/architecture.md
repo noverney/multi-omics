@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** M0–M2 built: the platform, an end-to-end ingest, the quality rules and the SDTM output. The [plan and milestones](#milestones) are at the end.
+> **Status:** M0–M3 built: the platform, an end-to-end ingest, the quality rules, the SDTM output and the secured API. The [plan and milestones](#milestones) are at the end.
 
 **Kafka carries messages, not data.**
 - Labs upload files to S3 and publish a small *claim-check* event (S3 URI + sha256).
@@ -43,6 +43,7 @@ flowchart LR
 | SeaweedFS (S3) | Holds the data itself; raw files are content-addressed, so they are never overwritten. MinIO's repo was archived in Apr 2026; SeaweedFS is Apache-2.0 and has run in production since 2012 |
 | Prefect | Retries, run history and UI for the pipelines; the reconcile flow re-runs stuck work |
 | Postgres | The harmonized store and pipeline state; domain separation via schemas and roles |
+| FastAPI | The unified access layer: SDTM records, history and lineage behind API keys and roles; every request audited ([security](security.md)) |
 
 ## One upload, end to end
 
@@ -122,7 +123,7 @@ erDiagram
 | M0 | Foundations: compose, init (roles, migrations, reference data, buckets, topics), lint | ✅ done |
 | M1 | Thin slice: simulators → S3 + Redpanda → dispatcher → Prefect → Postgres → SDTM | ✅ done |
 | M2 | Quality and standards: sanitization, units, ranges, holds, alerts, corrections | ✅ done |
-| M3 | Access and security: FastAPI (keys/roles, audit), DB roles, S3 identities | planned |
+| M3 | Access and security: FastAPI (keys/roles, audit), DB roles, S3 identities | ✅ done |
 | M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | planned |
 | M5 | Consumers and dashboards | planned |
 | M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | planned |

@@ -185,6 +185,24 @@ services:
       init: {condition: service_completed_successfully}
       prefect-server: {condition: service_healthy}
 
+  # --- Unified access layer: read-only DB role, API keys -> roles, every request audited.
+  api:
+    <<: *app
+    command: uvicorn omics.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DB_USER: api_ro
+      DB_PASSWORD: ${API_DB_PASSWORD:-api-dev}
+      API_KEYS: ${API_KEYS:-research:research-key-dev,ops:ops-key-dev}
+    ports: ["8000:8000"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
   # --- External labs (profile "sim"): each uploads to S3 and announces on lab.uploads.
   sim-clinic:
     <<: *lab-sim

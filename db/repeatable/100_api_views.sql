@@ -1,6 +1,7 @@
 -- Published contract: consumers (API, analysis, monitor) read these views, never the tables.
 -- Re-created on every init; grants are re-applied afterwards by 900_grants.sql.
-DROP VIEW IF EXISTS api.sdtm_findings, api.sdtm_dm, api.participant_hold,
+DROP VIEW IF EXISTS api.research_findings, api.lineage, api.quarantine, api.files,
+    api.sdtm_findings, api.sdtm_dm, api.participant_hold,
     api.measurement_history, api.measurement_current CASCADE;
 
 -- Current version = newest *source report* (not newest arrival): a stale re-export that
@@ -68,3 +69,36 @@ SELECT study_id         AS "STUDYID",
        'YEARS'          AS "AGEU",
        enrolled_on::text AS "RFICDTC"
 FROM core.participant;
+
+-- What research may analyse: no participant on hold, no assay QC failure. Enforced here,
+-- in the data layer, so no consumer can forget the rule.
+CREATE VIEW api.research_findings AS
+SELECT f.*
+FROM api.sdtm_findings f
+WHERE f.participant_id NOT IN (SELECT participant_id FROM api.participant_hold)
+  AND f."SUPP"->>'QCFLAG' <> 'FAIL';
+
+-- Lineage in one hop: every stored version, its raw source row and the file it came in.
+CREATE VIEW api.lineage AS
+SELECT m.measurement_id, m.record_hash, m.source_reported_at, m.received_at, m.source,
+       m.value_num, m.unit, m.orig_value, m.orig_unit, m.transform, m.contract_version,
+       r.row_number, r.payload AS raw_row,
+       f.file_name, f.lab, f.sha256, f.s3_uri, f.status AS file_status
+FROM sci.measurement m
+JOIN raw.record r USING (record_id)
+JOIN ops.ingest_file f ON f.file_id = m.file_id;
+
+-- Quarantined rows with their raw content and reason (ops / data stewards only).
+CREATE VIEW api.quarantine AS
+SELECT q.reason, q.detail, q.status, q.retryable, q.participant_id, p.usubjid,
+       f.lab, f.file_name, r.row_number, r.payload AS raw_row, q.created_at, q.resolved_at
+FROM ops.quarantine q
+JOIN raw.record r USING (record_id)
+JOIN ops.ingest_file f ON f.file_id = q.file_id
+LEFT JOIN core.participant p USING (participant_id);
+
+-- File-level pipeline state (monitoring).
+CREATE VIEW api.files AS
+SELECT file_name, lab, source, status, attempts, rows_total, rows_loaded, rows_quarantined,
+       error, warnings, size_bytes, reported_at, uploaded_at, updated_at, sha256
+FROM ops.ingest_file;
