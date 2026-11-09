@@ -1,0 +1,48 @@
+name: omx101_participants
+title: 'IBD-04: one row per participant (arm, ERAP2 genotype, RNA, protein, CRP change)'
+description: 'Analysis-ready table for the OMX-101 trial: rs2248374 genotype, baseline
+  ERAP2 RNA (nRPKM) and protein (Olink NPX), CRP at baseline and week 12 with their
+  ratio, and the week-12 change in IL6 and TNF (NPX, log2 differences).'
+sql: |-
+  WITH f AS (
+    SELECT "USUBJID", concept_id, "VISIT", "STRESN", "STRESC"
+    FROM api.research_findings
+    WHERE "STUDYID" = 'IBD-04'
+  ),
+  wide AS (
+    SELECT "USUBJID",
+      max("STRESC") FILTER (WHERE concept_id = 'GT_RS2248374') AS genotype,
+      max("STRESN") FILTER (WHERE concept_id = 'EXPR_ERAP2') AS erap2_rna_nrpkm,
+      max("STRESN") FILTER (WHERE concept_id = 'NPX_ERAP2' AND "VISIT" = 'BASELINE') AS erap2_protein_npx,
+      max("STRESN") FILTER (WHERE concept_id = 'CRP' AND "VISIT" = 'BASELINE') AS crp_baseline,
+      max("STRESN") FILTER (WHERE concept_id = 'CRP' AND "VISIT" = 'WEEK 12') AS crp_week12,
+      max("STRESN") FILTER (WHERE concept_id = 'NPX_IL6' AND "VISIT" = 'WEEK 12')
+        - max("STRESN") FILTER (WHERE concept_id = 'NPX_IL6' AND "VISIT" = 'BASELINE') AS il6_change_npx,
+      max("STRESN") FILTER (WHERE concept_id = 'NPX_TNF' AND "VISIT" = 'WEEK 12')
+        - max("STRESN") FILTER (WHERE concept_id = 'NPX_TNF' AND "VISIT" = 'BASELINE') AS tnf_change_npx
+    FROM f
+    GROUP BY "USUBJID"
+  )
+  SELECT w."USUBJID" AS usubjid,
+    dm."ARMCD" AS arm,
+    w.genotype,
+    CASE WHEN w.genotype = 'G/G' THEN 'G/G: no ERAP2' ELSE 'A carrier: makes ERAP2' END AS erap2_group,
+    w.erap2_rna_nrpkm,
+    w.erap2_protein_npx,
+    w.crp_baseline,
+    w.crp_week12,
+    round(w.crp_week12 / w.crp_baseline, 3) AS crp_ratio,
+    round(w.il6_change_npx, 2) AS il6_change_npx,
+    round(w.tnf_change_npx, 2) AS tnf_change_npx
+  FROM wide w
+  JOIN api.sdtm_dm dm USING ("USUBJID")
+uses:
+- study:IBD-04
+- drug:OMX-101
+- variant:rs2248374
+- test:EXPR_ERAP2
+- test:NPX_ERAP2
+- test:CRP
+- test:NPX_IL6
+- test:NPX_TNF
+created_by: claude

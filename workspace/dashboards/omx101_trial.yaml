@@ -1,0 +1,41 @@
+name: omx101_trial
+title: 'IBD-04: did OMX-101 work, and for whom?'
+description: 'OMX-101 (fictional ERAP2 inhibitor) vs placebo, week 12 vs baseline,
+  split by rs2248374: A carriers make ERAP2, G/G people do not'
+panels:
+- title: CRP at week 12 / baseline, per ERAP2 group and arm
+  pipeline: omx101_participants
+  chart: box
+  x: erap2_group
+  y: crp_ratio
+  color: arm
+  note: Below 1 means CRP fell. Each point is one participant.
+- title: Median CRP ratio per arm and group
+  pipeline: omx101_response_by_group
+  chart: bar
+  x: erap2_group
+  y: median_crp_ratio
+  color: arm
+- title: IL6 change by week 12 (NPX, log2 difference)
+  pipeline: omx101_participants
+  chart: box
+  x: erap2_group
+  y: il6_change_npx
+  color: arm
+  note: 'A fall of 1 NPX is roughly half the protein. NPX is relative: compare changes,
+    never absolute levels.'
+- title: Is the target there? ERAP2 RNA vs protein at baseline
+  pipeline: omx101_participants
+  chart: scatter
+  x: erap2_rna_nrpkm
+  y: erap2_protein_npx
+  color: genotype
+  note: RNA is real (Geuvadis); G/G people make almost no ERAP2 mRNA, so almost no
+    protein.
+- title: 'ERAP2 per genotype: n, median RNA and protein'
+  pipeline: erap2_rna_protein_by_genotype
+  chart: table
+- title: Response per arm and group (n, CRP, IL6, TNF)
+  pipeline: omx101_response_by_group
+  chart: table
+created_by: claude

@@ -1,0 +1,3 @@
+sample_id,participant_id,specimen_type,collected_at,encounter_id,visit
+S159,P060,SERUM,2026-02-08,E359,BASELINE
+S201,P003,SERUM,2026-03-02,E403,FOLLOW-UP 1

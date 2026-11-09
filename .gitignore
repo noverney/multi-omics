@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
+.DS_Store
+data/open/raw/
+# htslib caches remote VCF indexes; keep them out of the tree (fetch runs in data/open/raw/)
+*.tbi
+*.csi
+# the assignment brief stays local
+docs/*.pdf

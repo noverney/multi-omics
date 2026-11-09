@@ -1,0 +1,21 @@
+# Biobank manifest: which participant each sample belongs to. The master for samples.
+source: biobank_samples
+lab: clinic
+kind: sample
+parser: csv
+file_pattern: 'biobank_samples_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id]
+versions:
+  1:
+    sample_id: sample_id
+    participant_id: participant_id
+    specimen: specimen_type
+    collected_at: collected_at
+    encounter_id: encounter_id
+  2:                              # adds the visit each sample was taken at (CDISC VISIT)
+    sample_id: sample_id
+    participant_id: participant_id
+    specimen: specimen_type
+    collected_at: collected_at
+    encounter_id: encounter_id
+    visit: visit

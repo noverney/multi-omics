@@ -1,0 +1,306 @@
+# Local simulation of the platform. Infrastructure first, then our Python services
+# (one shared image). Host ports: console 8080, prefect 4200, seaweedfs 8888/8333, postgres 5433,
+# api 8000, MCP server (agent) 8001, dashboard 8501.
+name: omics
+
+x-app: &app
+  build: .
+  image: omics-app:dev
+  volumes: [".:/app"]   # dev convenience: code changes apply without rebuilding
+
+# Each service only gets the credentials it needs (least privilege).
+x-pipeline-env: &pipeline-env
+  DB_USER: pipeline_rw
+  DB_PASSWORD: ${PIPELINE_DB_PASSWORD:-pipeline-dev}
+  S3_ACCESS_KEY: ${S3_PIPELINE_KEY:-pipeline}
+  S3_SECRET_KEY: ${S3_PIPELINE_SECRET:-pipeline-dev-secret}
+  PREFECT_API_URL: http://prefect-server:4200/api
+  CHAOS_FAIL_RATE: ${CHAOS_FAIL_RATE:-0}
+
+x-lab-sim: &lab-sim
+  <<: *app
+  profiles: [sim]
+  command: python -m omics.services.lab_sim
+  restart: "no"
+  depends_on:
+    init: {condition: service_completed_successfully}
+
+x-redpanda: &redpanda
+  image: docker.redpanda.com/redpandadata/redpanda:v26.2.6
+  healthcheck:
+    test: ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+    interval: 5s
+    timeout: 5s
+    retries: 30
+
+services:
+  # --- Message bus: 3 brokers so one can crash without losing messages (RF=3, min ISR=2).
+  redpanda-0:
+    <<: *redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda-0:9092
+      - --rpc-addr=redpanda-0:33145
+      - --advertise-rpc-addr=redpanda-0:33145
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --default-log-level=warn
+    volumes: [redpanda-0:/var/lib/redpanda/data]
+
+  redpanda-1:
+    <<: *redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda-1:9092
+      - --rpc-addr=redpanda-1:33145
+      - --advertise-rpc-addr=redpanda-1:33145
+      - --seeds=redpanda-0:33145
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --default-log-level=warn
+    volumes: [redpanda-1:/var/lib/redpanda/data]
+    depends_on: [redpanda-0]
+
+  redpanda-2:
+    <<: *redpanda
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092
+      - --advertise-kafka-addr=internal://redpanda-2:9092
+      - --rpc-addr=redpanda-2:33145
+      - --advertise-rpc-addr=redpanda-2:33145
+      - --seeds=redpanda-0:33145
+      - --mode=dev-container
+      - --smp=1
+      - --memory=1G
+      - --default-log-level=warn
+    volumes: [redpanda-2:/var/lib/redpanda/data]
+    depends_on: [redpanda-0]
+
+  console:
+    image: docker.redpanda.com/redpandadata/console:v3.13.1
+    environment:
+      KAFKA_BROKERS: redpanda-0:9092,redpanda-1:9092,redpanda-2:9092
+      REDPANDA_ADMINAPI_ENABLED: "true"
+      REDPANDA_ADMINAPI_URLS: http://redpanda-0:9644,http://redpanda-1:9644,http://redpanda-2:9644
+    ports: ["8080:8080"]
+    depends_on:
+      redpanda-0: {condition: service_healthy}
+
+  # --- Object store for the data itself (labs write raw/, the pipeline writes curated/).
+  seaweedfs:
+    image: chrislusf/seaweedfs:4.50
+    command: >
+      server -ip=seaweedfs -dir=/data -master.volumeSizeLimitMB=128
+      -s3 -s3.config=/etc/seaweedfs/s3.json
+    volumes:
+      - seaweedfs:/data
+      - ./config/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+    ports: ["8888:8888", "8333:8333"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8888/ || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  # --- Harmonized store, pipeline state, and the Prefect server's own database.
+  postgres:
+    image: postgres:16.15
+    environment:
+      POSTGRES_USER: omics
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-omics-admin}
+      POSTGRES_DB: omics
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./config/postgres:/docker-entrypoint-initdb.d:ro
+    ports: ["5433:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U omics -d omics"]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+
+  prefect-server:
+    image: prefecthq/prefect:3.8.8-python3.12
+    command: prefect server start --host 0.0.0.0
+    environment:
+      PREFECT_API_DATABASE_CONNECTION_URL: postgresql+asyncpg://prefect:prefect-dev@postgres:5432/prefect
+      PREFECT_UI_API_URL: http://localhost:4200/api
+      PREFECT_SERVER_ANALYTICS_ENABLED: "false"
+    ports: ["4200:4200"]
+    depends_on:
+      postgres: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:4200/api/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 40
+
+  # --- One-shot bootstrap: roles, migrations, reference data, buckets, topics (idempotent).
+  init:
+    <<: *app
+    command: python -m omics.cli init
+    environment: &admin-env
+      DB_USER: omics
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-omics-admin}
+      S3_ACCESS_KEY: ${S3_ADMIN_KEY:-admin}
+      S3_SECRET_KEY: ${S3_ADMIN_SECRET:-admin-dev-secret}
+      # init sets each service role's password
+      PIPELINE_DB_PASSWORD: ${PIPELINE_DB_PASSWORD:-pipeline-dev}
+      API_DB_PASSWORD: ${API_DB_PASSWORD:-api-dev}
+      RESEARCH_DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
+      MONITOR_DB_PASSWORD: ${MONITOR_DB_PASSWORD:-monitor-dev}
+      DASHBOARD_DB_PASSWORD: ${DASHBOARD_DB_PASSWORD:-dashboard-dev}
+      AGENT_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
+    restart: "no"
+    depends_on:
+      postgres: {condition: service_healthy}
+      seaweedfs: {condition: service_healthy}
+      redpanda-0: {condition: service_healthy}
+      redpanda-1: {condition: service_healthy}
+      redpanda-2: {condition: service_healthy}
+
+  # --- Pipeline: Prefect serves the flows; the dispatcher turns upload events into flow runs.
+  flow-runner:
+    <<: *app
+    command: python -m omics.flows
+    environment:
+      <<: *pipeline-env
+      FLOW_CONCURRENCY: "2"
+      WORKSPACE_DB_USER: agent_rw  # refresh-workspace runs as the workspace owner
+      WORKSPACE_DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+      prefect-server: {condition: service_healthy}
+
+  dispatcher:
+    <<: *app
+    command: python -m omics.services.dispatcher
+    environment: *pipeline-env   # registers each delivery (RECEIVED) before starting a run
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+      prefect-server: {condition: service_healthy}
+
+  # --- Unified access layer: read-only DB role, API keys -> roles, every request audited.
+  api:
+    <<: *app
+    command: uvicorn omics.api.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DB_USER: api_ro
+      DB_PASSWORD: ${API_DB_PASSWORD:-api-dev}
+      API_KEYS: ${API_KEYS:-research:research-key-dev,ops:ops-key-dev}
+    ports: ["8000:8000"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- Consumers: separate groups and DB roles, so either can lag or crash on its own.
+  analysis:                       # research domain: features, outliers, case/control model
+    <<: *app
+    command: python -m omics.services.analysis
+    environment:
+      DB_USER: research_rw
+      DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
+      S3_ACCESS_KEY: ${S3_ANALYSIS_KEY:-analysis}       # read-only on curated/
+      S3_SECRET_KEY: ${S3_ANALYSIS_SECRET:-analysis-dev-secret}
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  monitor:                        # operations domain: event log, lag, freshness alerts
+    <<: *app
+    command: python -m omics.services.monitor
+    environment:
+      DB_USER: monitor_rw
+      DB_PASSWORD: ${MONITOR_DB_PASSWORD:-monitor-dev}
+      FRESHNESS_SECONDS: "120"
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  dashboard:
+    <<: *app
+    command: streamlit run src/omics/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      DB_USER: dashboard_ro
+      DB_PASSWORD: ${DASHBOARD_DB_PASSWORD:-dashboard-dev}
+    ports: ["8501:8501"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8501/_stcore/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- LLM access (MCP): any MCP client explores the ontology and builds workspace pipelines.
+  agent:
+    <<: *app
+    command: uvicorn omics.agent.server:app --host 0.0.0.0 --port 8001
+    environment:
+      DB_USER: agent_rw        # research-safe views + its own workspace schema, nothing else
+      DB_PASSWORD: ${AGENT_DB_PASSWORD:-agent-dev}
+      AGENT_TOKENS: ${AGENT_TOKENS:-claude:agent-token-dev}
+    ports: ["8001:8001"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; socket.create_connection(('localhost', 8001), 2)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- External labs (profile "sim"): each uploads to S3 and announces on lab.uploads.
+  sim-clinic:
+    <<: *lab-sim
+    environment: &lab-env
+      LAB: clinic
+      S3_ACCESS_KEY: ${S3_LAB_KEY:-lab}
+      S3_SECRET_KEY: ${S3_LAB_SECRET:-lab-dev-secret}
+      SIM_SPEED: ${SIM_SPEED:-1.0}
+  sim-lab-a:
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: lab-a}
+  sim-lab-b:
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: lab-b}
+  sim-olink:
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: olink}
+  sim-rna:                        # open data: Geuvadis expression matrix
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: rna-lab}
+  sim-dna:                        # open data: 1000 Genomes genotypes (VCF)
+    <<: *lab-sim
+    environment: {<<: *lab-env, LAB: dna-lab}
+
+  # --- Ad-hoc commands: `docker compose run --rm tools pytest` (not started by `up`).
+  tools:
+    <<: *app
+    profiles: [tools]
+    environment:
+      <<: *admin-env
+      PREFECT_API_URL: http://prefect-server:4200/api
+
+volumes:
+  redpanda-0:
+  redpanda-1:
+  redpanda-2:
+  seaweedfs:
+  pgdata:

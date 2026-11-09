@@ -1,0 +1,23 @@
+# Olink proteomics (NPX). No participant column: rows link to people through the sample.
+source: olink
+lab: olink
+kind: measurement
+parser: csv
+file_pattern: 'olink_npx_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id, code, run_date]  # a re-run on another date is a replicate, not a correction
+versions:
+  1:
+    sample_id: SampleID
+    code: UniProtID               # keyed by UniProt, never by the AssayTarget name
+    value: NPX_Value
+    qc_flag: QC_Flag
+    run_date: RunDate
+ignore: [AssayTarget]             # known and deliberately unused (names are ambiguous)
+fixed:
+  unit: NPX                       # log2 relative scale: never converted to absolute units
+codes:
+  P02741: NPX_CRP
+  P01375: NPX_TNF
+  P05231: NPX_IL6
+  P22301: NPX_IL10
+  Q6P179: NPX_ERAP2

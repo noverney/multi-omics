@@ -1,0 +1,15 @@
+# CTMS export: study enrollment. The operational master for participants.
+source: ctms_enrollment
+lab: clinic
+kind: enrollment
+parser: csv
+file_pattern: 'ctms_enrollment_(?P<reported_at>\d{8}T\d{4})'
+key: [participant_id]
+versions:
+  1:
+    participant_id: subject_id
+    study_id: study
+    arm: arm
+    sex: sex
+    age: age
+    enrolled_on: enrolled_on

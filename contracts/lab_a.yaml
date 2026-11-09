@@ -1,0 +1,17 @@
+# Lab A: clinical chemistry, CRP in mg/L (the brief's "Lab A" table).
+source: lab_a
+lab: lab-a
+kind: measurement
+parser: csv
+file_pattern: 'lab_a_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id, code]
+versions:
+  1:
+    participant_id: participant_id
+    sample_id: sample_id
+    code: analyte
+    value: value
+    unit: unit
+    observed_at: collected_at
+codes:
+  CRP: CRP

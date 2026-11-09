@@ -1,0 +1,19 @@
+# Clinic EHR export: vital signs per encounter (the brief's first table).
+source: ehr_vitals
+lab: clinic                       # delivery channel = source identity
+kind: measurement
+parser: csv
+file_pattern: 'ehr_vitals_(?P<reported_at>\d{8}T\d{4})'
+key: [encounter_id, code, observed_at]   # natural key, in canonical field names
+versions:
+  1:
+    participant_id: patient_id
+    encounter_id: encounter_id
+    code: vital_type
+    value: value
+    unit: unit
+    observed_at: recorded_at
+codes:                            # source code -> core.concept
+  HR: HR
+  SYS_BP: SYSBP
+  WEIGHT: WEIGHT

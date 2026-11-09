@@ -1,0 +1,25 @@
+[project]
+name = "omics"
+version = "0.1.0"
+description = "Multi-omics data pipeline prototype."
+requires-python = ">=3.12"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+# E/W/F: PEP 8 + pyflakes, I: imports, B: bugbear, UP: modern syntax, D: PEP 257 docstrings.
+select = ["E", "W", "F", "I", "B", "UP", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.ruff.lint.per-file-ignores]
+# Test names describe themselves; tests need a module docstring only.
+"tests/**" = ["D101", "D102", "D103"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src", "scripts"]
+markers = ["integration: needs the running Postgres container"]

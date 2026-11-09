@@ -1,0 +1,22 @@
+# DNA lab: genotype calls as VCF (1000 Genomes phase 3, open data).
+source: dna_genotypes
+lab: dna-lab
+kind: measurement
+parser: vcf                        # one row per (variant, sample)
+file_pattern: 'genotypes_(?P<reported_at>\d{8}T\d{4})'
+key: [sample_id, code]
+panel_only: true
+curated: true
+ignore: [CHROM, POS, REF, ALT, GT]
+versions:
+  1:
+    code: ID                       # dbSNP rsID
+    sample_id: sample_id
+    value: DOSAGE                  # number of ALT alleles: 0, 1 or 2
+    value_text: GT_BASES           # the call itself, e.g. A/G
+codes:
+  RS2248374: GT_RS2248374
+  RS1205: GT_RS1205
+  RS1800629: GT_RS1800629
+  RS1800795: GT_RS1800795
+  RS1800896: GT_RS1800896

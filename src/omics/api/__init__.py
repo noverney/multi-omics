@@ -1,0 +1,1 @@
+"""Unified access layer (FastAPI)."""
