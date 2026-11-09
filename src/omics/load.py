@@ -33,8 +33,16 @@ PARTICIPANT = (
 )
 SAMPLE = "sample_id participant_id specimen collected_at encounter_id reported_at record_id".split()
 
+# Same content delivered twice (a re-send): keep the lineage of the EARLIEST delivery, so
+# the stored result does not depend on which copy happened to be processed first.
+FIRST_DELIVERY_WINS = (
+    "ON CONFLICT (measurement_id, record_hash, source_reported_at) DO UPDATE SET "
+    + ", ".join(f"{c} = EXCLUDED.{c}" for c in MEASUREMENT[3:] if c != "source")
+    + " WHERE (EXCLUDED.received_at, EXCLUDED.record_id)"
+    " < (sci.measurement.received_at, sci.measurement.record_id)"
+)
 STORE_SQL = {
-    "measurement": insert_sql("sci.measurement", MEASUREMENT, "ON CONFLICT DO NOTHING"),
+    "measurement": insert_sql("sci.measurement", MEASUREMENT, FIRST_DELIVERY_WINS),
     "enrollment": upsert_newest("core.participant", "participant_id", PARTICIPANT),
     "sample": upsert_newest("core.sample", "sample_id", SAMPLE),
 }

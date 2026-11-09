@@ -21,5 +21,5 @@ convention = "pep257"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "scripts"]
 markers = ["integration: needs the running Postgres container"]

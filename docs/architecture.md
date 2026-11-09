@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** M0–M3 built: the platform, an end-to-end ingest, the quality rules, the SDTM output and the secured API. The [plan and milestones](#milestones) are at the end.
+> **Status:** M0–M4 built: everything the brief asks for. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
 
 **Kafka carries messages, not data.**
 - Labs upload files to S3 and publish a small *claim-check* event (S3 URI + sha256).
@@ -83,6 +83,31 @@ stateDiagram-v2
   PUBLISHED --> [*]
 ```
 
+## Resilience and replay
+
+Every run is judged by one number: the **checksum of all derived data**. It covers the measurements, the masters and the open quarantine, and leaves out wall-clock bookkeeping. The same input files must always give the golden checksum (`data/scenario/expected_checksum.txt`), however they arrive.
+
+| Command | What happens | Verified result |
+| --- | --- | --- |
+| `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 11/11 checks ✅; replay identical ✅ |
+| `make chaos` | The same scenario under four failures (timeline below) | settles by itself; golden checksum ✅ |
+| `make replay` | Truncate everything derived, re-run every file from S3 under new idempotency keys | identical checksum ✅ |
+
+The four failures in `make chaos`:
+- 30% random task crashes, which Prefect retries.
+- The dispatcher is down for 20 s; events queue in Redpanda.
+- The flow-runner is `kill -9`'d mid-batch; reconcile re-runs the files it dropped.
+- One of three brokers is stopped.
+
+**Why it converges:**
+- IDs and hashes are derived from content.
+- Measurements are append-only rows, and "current" is a view.
+- Operational masters decide entity resolution.
+- Held rows are retried until a fixed point.
+- If the same content arrives twice, the earliest delivery's lineage is kept.
+
+In one demo run the labs beat the clinic, so 601 rows waited for their master data. The checksum was still identical to the golden run, in which almost nothing waited.
+
 ## Data model
 
 ```mermaid
@@ -124,7 +149,7 @@ erDiagram
 | M1 | Thin slice: simulators → S3 + Redpanda → dispatcher → Prefect → Postgres → SDTM | ✅ done |
 | M2 | Quality and standards: sanitization, units, ranges, holds, alerts, corrections | ✅ done |
 | M3 | Access and security: FastAPI (keys/roles, audit), DB roles, S3 identities | ✅ done |
-| M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | planned |
+| M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | ✅ done |
 | M5 | Consumers and dashboards | planned |
 | M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | planned |
 | M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | planned |

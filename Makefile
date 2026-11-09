@@ -8,7 +8,8 @@ TOOLS   := $(COMPOSE) run --rm --no-deps tools
 
 LABS    := sim-clinic sim-lab-a sim-lab-b sim-olink
 
-.PHONY: help up down reset ps logs test lint format lock data simulate deliver
+.PHONY: help up down reset ps logs test lint format lock data simulate deliver \
+        demo chaos replay checksum golden
 
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -23,7 +24,7 @@ down:  ## stop containers, keep all data
 	$(COMPOSE) down
 
 reset: .env  ## wipe ALL state (topics, buckets, db, Prefect history) and start clean
-	$(COMPOSE) down -v --remove-orphans
+	$(COMPOSE) --profile sim --profile tools down -v --remove-orphans
 	$(COMPOSE) up -d --build --wait
 
 ps:  ## container status
@@ -36,10 +37,27 @@ data: .env  ## regenerate the synthetic scenario files (fixed seed)
 	$(TOOLS) python scripts/generate_synthetic.py
 
 simulate: .env  ## start every lab simulator (days 1-3 of the scenario)
-	$(COMPOSE) --profile sim up -d --no-recreate $(LABS)
+	$(COMPOSE) --profile sim up -d --force-recreate $(LABS)
 
 deliver: .env  ## deliver one file live, e.g. make deliver LAB=lab-b FILE=data/scenario/lab-b/d2/x.csv
 	$(COMPOSE) run --rm sim-$(LAB) python -m omics.services.lab_sim --file $(FILE)
+
+demo: reset  ## clean run of the 3-day scenario, a check per brief topic, then a replay
+	$(COMPOSE) --profile sim up -d --force-recreate $(LABS)
+	$(TOOLS) python scripts/demo.py
+	$(TOOLS) python -m omics.cli replay
+
+chaos: .env  ## same scenario while crashing workers and a broker; must match the golden checksum
+	python3 scripts/chaos.py
+
+replay: .env  ## rebuild all derived data from the raw files and prove it is identical
+	$(TOOLS) python -m omics.cli replay
+
+checksum: .env  ## compare all derived data with the golden checksum of a clean run
+	$(TOOLS) python -m omics.cli checksum --expect data/scenario/expected_checksum.txt
+
+golden: .env  ## store the current checksum as golden (after a clean `make demo`)
+	$(TOOLS) python -m omics.cli checksum --write data/scenario/expected_checksum.txt
 
 test: .env  ## unit + integration tests (integration needs `make up`)
 	$(TOOLS) pytest -q

@@ -13,10 +13,10 @@ A working prototype of a multi-source, multi-omics measurement pipeline. It inge
 You need Docker with about 6 GB of RAM. Then:
 
 ```sh
-make up         # build and start the platform
-make simulate   # four external labs deliver three days of data
+make demo       # clean run + one check per topic of the brief + replay (~3.5 min)
+make chaos      # same scenario while crashing workers and a broker (~3 min)
 make test       # unit + integration tests
-make help       # every command
+make help       # every command (up, simulate, reset, replay, checksum, ...)
 ```
 
 | UI | URL |
