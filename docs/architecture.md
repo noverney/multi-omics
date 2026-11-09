@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** M0–M4 built: everything the brief asks for. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
+> **Status:** M0–M5 built: everything the brief asks for, plus the analysis and monitoring consumers and the dashboard. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
 
 **Kafka carries messages, not data.**
 - Labs upload files to S3 and publish a small *claim-check* event (S3 URI + sha256).
@@ -43,6 +43,9 @@ flowchart LR
 | SeaweedFS (S3) | Holds the data itself; raw files are content-addressed, so they are never overwritten. MinIO's repo was archived in Apr 2026; SeaweedFS is Apache-2.0 and has run in production since 2012 |
 | Prefect | Retries, run history and UI for the pipelines; the reconcile flow re-runs stuck work |
 | Postgres | The harmonized store and pipeline state; domain separation via schemas and roles |
+| Analysis consumer | Research domain: features, outliers and a case/control model per study, kept current from `harmonized.sdtm` and `alerts`. Reads research-safe views only |
+| Monitor consumer | Operations domain: logs every upload, alert and dead letter; consumer lag per group; `LAB_SILENT` freshness alerts |
+| Streamlit dashboard | System state, data quality, cohort graph, lineage, analysis. Chart colors validated for color-blind safety |
 | FastAPI | The unified access layer: SDTM records, history and lineage behind API keys and roles; every request audited ([security](security.md)) |
 
 ## One upload, end to end
@@ -90,14 +93,15 @@ Every run is judged by one number: the **checksum of all derived data**. It cove
 | Command | What happens | Verified result |
 | --- | --- | --- |
 | `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 11/11 checks ✅; replay identical ✅ |
-| `make chaos` | The same scenario under four failures (timeline below) | settles by itself; golden checksum ✅ |
+| `make chaos` | The same scenario under five failures (timeline below) | settles by itself; golden checksum ✅ |
 | `make replay` | Truncate everything derived, re-run every file from S3 under new idempotency keys | identical checksum ✅ |
 
-The four failures in `make chaos`:
+The five failures in `make chaos`:
 - 30% random task crashes, which Prefect retries.
 - The dispatcher is down for 20 s; events queue in Redpanda.
 - The flow-runner is `kill -9`'d mid-batch; reconcile re-runs the files it dropped.
 - One of three brokers is stopped.
+- The analysis consumer is down for a minute: research falls behind, ingestion doesn't, and it catches up from its committed offset.
 
 **Why it converges:**
 - IDs and hashes are derived from content.
@@ -150,6 +154,6 @@ erDiagram
 | M2 | Quality and standards: sanitization, units, ranges, holds, alerts, corrections | ✅ done |
 | M3 | Access and security: FastAPI (keys/roles, audit), DB roles, S3 identities | ✅ done |
 | M4 | Resilience: reconcile, chaos, reset/replay/checksum, `make demo` **(cut line)** | ✅ done |
-| M5 | Consumers and dashboards | planned |
+| M5 | Consumers and dashboards | ✅ done |
 | M6 | Open multi-omics: 1000 Genomes + Geuvadis, Dask eQTL, ontology graph | planned |
 | M7 | Polish: README, decisions, CI, final deck, 1-hour walkthrough | planned |

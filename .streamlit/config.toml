@@ -1,0 +1,17 @@
+# Dashboard theme in a teal palette (UI chrome only; chart colors live in dashboard/data.py).
+[theme]
+base = "light"
+primaryColor = "#003B49"             # petrol
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5FDFF" # ice
+textColor = "#101820"                # ink
+font = "sans serif"
+
+[server]
+headless = true
+
+[client]
+toolbarMode = "minimal"   # hide the Deploy button
+
+[browser]
+gatherUsageStats = false

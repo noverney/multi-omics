@@ -14,12 +14,14 @@ import time
 LABS = ["sim-clinic", "sim-lab-a", "sim-lab-b", "sim-olink"]
 ENV = {k: v for k, v in os.environ.items() if k != "DOCKER_DEFAULT_PLATFORM"}  # run native
 TIMELINE = [  # (seconds after the labs start, what happens, compose arguments)
+    (2, "analysis consumer DOWN: research falls behind, ingestion does not", ["stop", "analysis"]),
     (4, "dispatcher DOWN: upload events queue up in Redpanda", ["stop", "dispatcher"]),
     (10, "flow-runner KILLED (-9) mid-batch: a node crash", ["kill", "flow-runner"]),
     (14, "broker redpanda-1 DOWN: 2 of 3 replicas left", ["stop", "redpanda-1"]),
     (24, "dispatcher UP: resumes from its committed offset", ["start", "dispatcher"]),
     (32, "flow-runner UP: reconcile will re-run the files it dropped", ["start", "flow-runner"]),
     (50, "broker redpanda-1 UP: rejoins and re-syncs", ["start", "redpanda-1"]),
+    (60, "analysis consumer UP: catches up from its committed offset", ["start", "analysis"]),
 ]
 START = time.monotonic()
 

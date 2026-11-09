@@ -156,6 +156,7 @@ services:
       API_DB_PASSWORD: ${API_DB_PASSWORD:-api-dev}
       RESEARCH_DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
       MONITOR_DB_PASSWORD: ${MONITOR_DB_PASSWORD:-monitor-dev}
+      DASHBOARD_DB_PASSWORD: ${DASHBOARD_DB_PASSWORD:-dashboard-dev}
     restart: "no"
     depends_on:
       postgres: {condition: service_healthy}
@@ -199,6 +200,44 @@ services:
       init: {condition: service_completed_successfully}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # --- Consumers: separate groups and DB roles, so either can lag or crash on its own.
+  analysis:                       # research domain: features, outliers, case/control model
+    <<: *app
+    command: python -m omics.services.analysis
+    environment:
+      DB_USER: research_rw
+      DB_PASSWORD: ${RESEARCH_DB_PASSWORD:-research-dev}
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  monitor:                        # operations domain: event log, lag, freshness alerts
+    <<: *app
+    command: python -m omics.services.monitor
+    environment:
+      DB_USER: monitor_rw
+      DB_PASSWORD: ${MONITOR_DB_PASSWORD:-monitor-dev}
+      FRESHNESS_SECONDS: "120"
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+
+  dashboard:
+    <<: *app
+    command: streamlit run src/omics/dashboard/app.py --server.port 8501 --server.address 0.0.0.0
+    environment:
+      DB_USER: dashboard_ro
+      DB_PASSWORD: ${DASHBOARD_DB_PASSWORD:-dashboard-dev}
+    ports: ["8501:8501"]
+    restart: unless-stopped
+    depends_on:
+      init: {condition: service_completed_successfully}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:8501/_stcore/health')"]
       interval: 5s
       timeout: 5s
       retries: 20

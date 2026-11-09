@@ -21,6 +21,7 @@ make help       # every command (up, simulate, reset, replay, checksum, ...)
 
 | UI | URL |
 | --- | --- |
+| Dashboard: system state, data quality, cohorts, lineage, analysis | <http://localhost:8501> |
 | API docs: SDTM, lineage, quality (header `X-API-Key: research-key-dev` or `ops-key-dev`) | <http://localhost:8000/docs> |
 | Redpanda Console (topics, consumer lag) | <http://localhost:8080> |
 | Prefect (flow runs, retries) | <http://localhost:4200> |

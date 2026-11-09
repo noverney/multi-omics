@@ -14,9 +14,15 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "data" / "scenario"
-RNG = random.Random(42)
+RNG = random.Random(2026)
 STUDIES = ("CARDIO-01", "RA-02", "IBD-03")
-CASE_SHIFT = {"CARDIO-01": 1.1, "RA-02": 1.5, "IBD-03": 1.3}  # log-CRP shift for cases
+# Planted case/control signal, deliberately modest (effect sizes ~0.5-1 SD per marker):
+# realistic enough that the classifier is good, not perfect.
+CASE_SHIFT = {"CARDIO-01": 0.6, "RA-02": 0.7, "IBD-03": 0.65}  # log-CRP shift for cases
+CRP_SD = 0.6  # log-CRP spread
+VITALS = {"HR": (70, 73, 8), "SYS_BP": (118, 122, 11)}  # control mean, case mean, SD
+NPX_BUMP = {"CARDIO-01": 0.3, "RA-02": 0.35, "IBD-03": 0.3}  # NPX shift for cases
+NPX_SD = 0.45
 LATE_SAMPLE = "S159"  # Olink measures it on day 1; the biobank registers it on day 2
 
 
@@ -46,7 +52,7 @@ def people() -> list[dict]:
 def crp(person: dict) -> float:
     """Serum CRP in mg/L: log-normal, higher in cases (strongest in RA)."""
     shift = CASE_SHIFT[person["study"]] if person["case"] else 0.0
-    return round(math.exp(RNG.gauss(math.log(1.2) + shift, 0.45)), 1)
+    return round(math.exp(RNG.gauss(math.log(1.2) + shift, CRP_SD)), 1)
 
 
 def write(lab: str, day: int, name: str, header: list[str], rows: list[list]) -> None:
@@ -86,8 +92,8 @@ def clinic(cohort: list[dict]) -> None:
     rows = []
     for p in cohort:
         stamp = f"{p['visit']} {p['time']}"
-        hr = RNG.gauss(78 if p["case"] else 70, 7)
-        sbp = RNG.gauss(130 if p["case"] else 118, 9)
+        hr = RNG.gauss(VITALS["HR"][p["case"]], VITALS["HR"][2])
+        sbp = RNG.gauss(VITALS["SYS_BP"][p["case"]], VITALS["SYS_BP"][2])
         weight = round(RNG.gauss(75, 11), 1)
         if p["pid"] == "P001":  # brief row, verbatim
             stamp, hr = "2026-01-10 09:30", 72
@@ -161,12 +167,12 @@ def olink(cohort: list[dict], values: dict) -> None:
     proteins = (("CRP", "P02741"), ("TNF", "P01375"), ("IL6", "P05231"), ("IL10", "P22301"))
     rows = []
     for p in cohort:
-        bump = 1.0 if p["study"] == "RA-02" else 0.6
+        bump = NPX_BUMP[p["study"]] if p["case"] else 0.0
         npx = {
             "CRP": 8.39 + 1.2 * math.log2(values[p["pid"]]) + RNG.gauss(0, 0.3),
-            "TNF": 2.8 + (bump if p["case"] else 0) + RNG.gauss(0, 0.35),
-            "IL6": 2.4 + (bump + 0.3 if p["case"] else 0) + RNG.gauss(0, 0.4),
-            "IL10": 3.0 + (0.2 if p["case"] else 0) + RNG.gauss(0, 0.4),
+            "TNF": 2.8 + bump + RNG.gauss(0, NPX_SD),
+            "IL6": 2.4 + bump + RNG.gauss(0, NPX_SD),
+            "IL10": 3.0 + bump / 3 + RNG.gauss(0, NPX_SD),
         }
         for target, uniprot in proteins:
             qc, value = ("WARN" if RNG.random() < 0.04 else "PASS"), round(npx[target], 2)
@@ -186,6 +192,7 @@ def main() -> None:
     cohort = people()
     values = {p["pid"]: crp(p) for p in cohort}
     values |= {"P001": 3.2, "P002": 1.7}  # brief rows, verbatim
+    values |= {"P010": 0.9}  # sent x1000 on day 1 (900 "mg/L"): must stay implausible
     clinic(cohort)
     lab_a(cohort, values)
     lab_b(cohort, values)

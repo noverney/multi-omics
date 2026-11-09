@@ -4,13 +4,15 @@ Each check returns (passed, evidence). The same checks run as integration tests.
 """
 
 import sys
+import time
 from decimal import Decimal
 
 import httpx
 import psycopg
+from confluent_kafka import Consumer, TopicPartition
 
 from omics import settings
-from omics.cli import GOLDEN, checksum, scenario_files, settle
+from omics.cli import GOLDEN, SCENARIO, checksum, scenario_files, settle
 
 API = "http://api:8000"
 RESEARCH, OPS = {"X-API-Key": "research-key-dev"}, {"X-API-Key": "ops-key-dev"}
@@ -154,6 +156,68 @@ def access_control():
     return passed, f"no key -> {anonymous}; research on quarantine -> {forbidden}; P014 hidden"
 
 
+@check("Analysis consumer")
+def analysis_consumer():
+    """Prove research gets every participant except the one on hold, plus a model per study."""
+    (people, p014) = one(
+        "SELECT count(*), count(*) FILTER (WHERE usubjid LIKE '%%-P014')"
+        " FROM research.participant_features"
+    )
+    (studies, worst) = one("SELECT count(*), min(auc) FROM research.model_score")
+    return people == 59 and p014 == 0 and studies == 3 and worst >= 0.75, (
+        f"features for {people} participants (P014 on hold, excluded); "
+        f"case/control ROC AUC >= {worst:.2f} in all {studies} studies"
+    )
+
+
+def topic_size(topic: str) -> int:
+    """Count the messages a topic holds (high minus low watermark, summed over partitions)."""
+    probe = Consumer({"bootstrap.servers": settings.KAFKA_BROKERS, "group.id": "demo-probe"})
+    try:
+        partitions = probe.list_topics(topic, timeout=10).topics[topic].partitions
+        marks = [
+            probe.get_watermark_offsets(TopicPartition(topic, p), timeout=10) for p in partitions
+        ]
+        return sum(high - low for low, high in marks)
+    finally:
+        probe.close()
+
+
+@check("Monitoring")
+def monitoring():
+    """Prove every delivery and every alert reached the monitor, with lag tracked per group."""
+    # How many alerts exist depends on arrival order (an issue corrected before the outbox
+    # drains needs none), so compare with what the topic actually holds.
+    deliveries = len([p for p in SCENARIO.glob("*/d*/*") if p.is_file()])
+    deadline = time.monotonic() + 20
+    while True:
+        on_topic = topic_size("alerts")
+        (uploads, alerts) = one(
+            "SELECT count(*) FILTER (WHERE topic = 'lab.uploads'),"
+            " count(*) FILTER (WHERE topic = 'alerts') FROM monitor.event_log"
+        )
+        if alerts >= on_topic or time.monotonic() > deadline:
+            break
+        time.sleep(2)
+    (groups,) = one("SELECT count(*) FROM monitor.consumer_lag")
+    return uploads == deliveries and alerts == on_topic and groups == 3, (
+        f"{uploads}/{deliveries} deliveries and {alerts}/{on_topic} alerts logged; "
+        f"lag tracked for {groups} consumer groups"
+    )
+
+
+def consumers_caught_up(timeout: float = 120) -> None:
+    """Wait until both consumers have processed the scenario (they run asynchronously)."""
+    deliveries = len([p for p in SCENARIO.glob("*/d*/*") if p.is_file()])
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        (models,) = one("SELECT count(*) FROM research.model_score")
+        (uploads,) = one("SELECT count(*) FROM monitor.event_log WHERE topic = 'lab.uploads'")
+        if models == 3 and uploads == deliveries:
+            return
+        time.sleep(3)
+
+
 @check("Determinism")
 def determinism():
     """Prove this run produced exactly the golden checksum."""
@@ -165,6 +229,7 @@ def main() -> None:
     """Wait for the scenario to finish, then run every check; exit 1 if any fails."""
     print("waiting for the three-day scenario to be processed...")
     settle(scenario_files())
+    consumers_caught_up()
     failures = 0
     for topic, fn in CHECKS:
         passed, evidence = fn()

@@ -16,6 +16,10 @@ GRANT USAGE ON SCHEMA api, research TO research_rw;
 GRANT SELECT ON api.research_findings, api.sdtm_dm, api.measurement_history TO research_rw;
 GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA research TO research_rw;
 
+-- Dashboard: read-only over the published views and both consumers' outputs.
+GRANT USAGE ON SCHEMA api, research, monitor TO dashboard_ro;
+GRANT SELECT ON ALL TABLES IN SCHEMA api, research, monitor TO dashboard_ro;
+
 -- Monitoring: operational views only + its own schema.
 GRANT USAGE ON SCHEMA api, monitor TO monitor_rw;
 GRANT SELECT ON api.files, api.quarantine, api.participant_hold TO monitor_rw;
