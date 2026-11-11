@@ -2,6 +2,7 @@
 name = "omics"
 version = "0.1.0"
 description = "Multi-omics data pipeline prototype."
+license = "MIT"
 requires-python = ">=3.12"
 
 [tool.ruff]

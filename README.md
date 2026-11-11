@@ -128,3 +128,7 @@ curl -s -H 'X-API-Key: research-key-dev' \
 | [Runbook](docs/runbook.md) | Commands, URLs, troubleshooting |
 | [Open data sources](data/open/SOURCES.md) | Provenance of the DNA/RNA deliveries |
 | [CLAUDE.md](CLAUDE.md) | Coding conventions (KISS, PEP 257, under 1000 lines per file) |
+
+## License
+
+The code is released under the [MIT License](LICENSE). The DNA and RNA deliveries are derived from open 1000 Genomes and Geuvadis data, which keep their own terms (see [open data sources](data/open/SOURCES.md)).
