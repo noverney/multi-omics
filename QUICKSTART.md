@@ -90,7 +90,7 @@ make try                 # list the examples
 make try-correction      # a lab corrects a value: a new version, nothing overwritten
 ```
 
-The others are `resend`, `bad-unit` then `fix-unit`, `late-sample`, `bad-header`, `wrong-person`, `lineage` and `access`. They add files to the scenario, so `make checksum` will differ afterwards; `make demo` returns to the golden state.
+The others are `resend`, `bad-unit` then `fix-unit`, `late-sample`, `bad-header`, `wrong-person` then `fix-person`, `lineage` and `access`. They add files to the scenario, so `make checksum` will differ afterwards; `make demo` returns to the golden state.
 
 ## 7. Break it, then check nothing changed
 

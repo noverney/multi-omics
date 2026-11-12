@@ -264,7 +264,32 @@ def wrong_person():
     )
     look(
         "not retryable (a contradiction won't fix itself), so it raises a CRITICAL alert."
-        " The P007 row is the scenario's own planted conflict."
+        " The P007 row is the scenario's own planted conflict. The fix: make try-fix-person."
+    )
+
+
+@example(
+    "fix-person",
+    "The lab corrects the person (after try-wrong-person)",
+    "Nobody edits rows by hand: the lab re-sends the row, and the newer report resolves it.",
+)
+def fix_person():
+    """Send Lab B's corrected row: sample S100 belongs to P001, as the biobank says."""
+    send("lab-b", "examples/lab_b_20261112T1435.csv")
+    show(
+        "the conflict from try-wrong-person now",
+        "SELECT participant_id, reason, status, resolved_at IS NOT NULL AS resolved"
+        " FROM api.quarantine WHERE file_name = 'lab_b_20261112T1430.csv'",
+    )
+    show(
+        "the measurement the corrected row became",
+        "SELECT participant_id, sample_id, value_num, unit, source,"
+        " to_char(source_reported_at, 'YYYY-MM-DD HH24:MI') AS reported FROM sci.measurement"
+        " WHERE sample_id = 'S100' AND source = 'lab_b'",
+    )
+    look(
+        "RESOLVED by the lab's own correction, with full lineage. If the biobank had been wrong,"
+        " it would correct its sample list first, then the lab would re-send."
     )
 
 
