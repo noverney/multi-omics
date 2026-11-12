@@ -104,7 +104,7 @@ What Claude did, through the tools only:
 3. **Built three pipelines.** The first, `omx101_participants`, has one row per participant. `omx101_response_by_group` and `erap2_rna_protein_by_genotype` read it.
 4. **Built a dashboard.** `omx101_trial` is live at <http://localhost:8501/omx101_trial>.
 
-The answer, from the saved pipelines (each ratio is rounded before the median is taken, so the demo check, which uses unrounded values, reports ×0.42):
+The answer, from the saved pipelines. The carrier median is exactly 0.425: the pipeline rounds it as a Postgres numeric, half up, to ×0.43, while the demo check prints the same value as a binary float, ×0.42:
 
 | Arm | rs2248374 group | n | CRP week 12 / baseline | IL6 change (NPX) |
 | --- | --- | --- | --- | --- |
