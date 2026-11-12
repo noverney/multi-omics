@@ -9,7 +9,7 @@ TOOLS   := $(COMPOSE) run --rm --no-deps tools
 LABS    := sim-clinic sim-lab-a sim-lab-b sim-olink sim-rna sim-dna
 
 .PHONY: help up down reset ps logs test lint format lock fetch data simulate deliver \
-        demo chaos replay checksum golden
+        demo try chaos replay checksum golden
 
 help:  ## list targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-8s %s\n", $$1, $$2}'
@@ -49,6 +49,12 @@ demo: reset  ## clean run of the 3-day scenario, a check per brief topic, then a
 	$(COMPOSE) --profile sim up -d --force-recreate $(LABS)
 	$(TOOLS) python scripts/demo.py
 	$(TOOLS) python -m omics.cli replay
+
+try: .env  ## list the live examples; run one with e.g. make try-correction
+	@$(COMPOSE) --progress quiet run --rm --no-deps tools python scripts/examples.py
+
+try-%: .env
+	@$(COMPOSE) --progress quiet run --rm --no-deps tools python scripts/examples.py $*
 
 chaos: .env  ## same scenario while crashing workers and a broker; must match the golden checksum
 	python3 scripts/chaos.py
