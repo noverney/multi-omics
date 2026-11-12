@@ -58,12 +58,12 @@ ON CONFLICT (record_id) DO UPDATE SET
     status = 'OPEN', resolved_at = NULL,
     alerted_at = CASE WHEN ops.quarantine.reason = EXCLUDED.reason
                       THEN ops.quarantine.alerted_at END"""
-# A valid, newer report of the same measurement supersedes a quarantined bad one.
+# A valid, newer report supersedes a quarantined bad value; rows waiting for masters load later.
 RESOLVE_CORRECTED_SQL = """
 UPDATE ops.quarantine q SET status = 'RESOLVED', resolved_at = now()
 FROM ops.ingest_file f
-WHERE q.status = 'OPEN' AND q.file_id = f.file_id AND q.measurement_id IS NOT NULL
-  AND EXISTS (SELECT 1 FROM sci.measurement m
+WHERE q.status = 'OPEN' AND NOT q.retryable AND q.file_id = f.file_id
+  AND q.measurement_id IS NOT NULL AND EXISTS (SELECT 1 FROM sci.measurement m
               WHERE m.measurement_id = q.measurement_id AND m.source_reported_at > f.reported_at)"""
 PENDING_SQL = """
 SELECT r.row_number, r.payload, f.file_id, f.sha256, f.source, f.reported_at, f.uploaded_at,
