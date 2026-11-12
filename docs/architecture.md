@@ -101,7 +101,7 @@ Every run is judged by one number: the **checksum of all derived data**. It cove
 | `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 16/16 checks ✅; replay identical ✅ |
 | `make chaos` | The same scenario under five failures (timeline below) | settles by itself; golden checksum ✅ |
 | `make replay` | Truncate everything derived, re-run every file from S3 under new idempotency keys | identical checksum ✅ |
-| `make try-<name>` | One behaviour at a time: delivers a small file from `data/examples/`, waits, prints its input and output | a LOOK AT line per example; `make try` lists all nine |
+| `make try-<name>` | One behaviour at a time: delivers a small file from `data/examples/`, waits, prints its input and output | a LOOK AT line per example; `make try` lists all ten |
 
 The five failures in `make chaos`:
 - 30% random task crashes, which Prefect retries.

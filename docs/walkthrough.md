@@ -29,7 +29,7 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 
 | Topic | Where it lives | Evidence | Try it live |
 | --- | --- | --- | --- |
-| Entity resolution | `harmonize.resolve`, masters from CTMS + biobank | S205 conflict quarantined; P001 in 6/6 feeds | `make try-wrong-person` |
+| Entity resolution | `harmonize.resolve`, masters from CTMS + biobank | S205 conflict quarantined; P001 in 6/6 feeds | `make try-wrong-person`, then `make try-fix-person` |
 | Idempotency | sha256 file id, UUIDv5 ids, `unique (id, hash, reported_at)` | exact re-send → 1 file; re-ordered re-send → 0 rows | `make try-resend` |
 | Validation | `quality.py`, `ops.quarantine`, `api.participant_hold` | weight 72000 → SUSPECT_UNIT → corrected → hold cleared | `make try-bad-unit`, then `make try-fix-unit` |
 | Lineage | lineage columns + `api.lineage` + `/measurements/{id}/lineage` | value → raw row → file → S3 URI | `make try-lineage` |
