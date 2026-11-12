@@ -1,6 +1,6 @@
 # Walkthrough (60 minutes)
 
-A suggested order for presenting or reviewing the repo. Start `make demo` at minute 10: it runs for about 3.5 minutes while you talk.
+A suggested order for presenting or reviewing the repo. Start `make demo` at minute 10: it runs for about 3.5 minutes while you talk. Afterwards, `make try` lists live examples, one behaviour each: every example prints its input file, what the platform did with it, and what to look at.
 
 | Min | Topic | Show |
 | --- | --- | --- |
@@ -27,16 +27,16 @@ A suggested order for presenting or reviewing the repo. Start `make demo` at min
 
 ## If asked about…
 
-| Topic | Where it lives | Evidence |
-| --- | --- | --- |
-| Entity resolution | `harmonize.resolve`, masters from CTMS + biobank | S205 conflict quarantined; P001 in 6/6 feeds |
-| Idempotency | sha256 file id, UUIDv5 ids, `unique (id, hash, reported_at)` | exact re-send → 1 file; re-ordered re-send → 0 rows |
-| Validation | `quality.py`, `ops.quarantine`, `api.participant_hold` | weight 72000 → SUSPECT_UNIT → corrected → hold cleared |
-| Lineage | lineage columns + `api.lineage` + `/measurements/{id}/lineage` | value → raw row → file → S3 URI |
-| Late or corrected data | retry loop; current = newest report | S159 waits, then loads; P003/S201 3 versions, current 2400 |
-| Fault tolerance | one transaction per file, reconcile, DLQ, RF=3 | `make chaos` matches golden |
-| Schema evolution | contract versions chosen by header; unknown columns kept | Lab B v2 loads; unknown header → FAILED alone |
-| Replayability | immutable raw/, deterministic ids | `make replay`: identical checksum |
-| Security | roles, research view, audit log, S3 identities | 401/403, P014 hidden from research |
-| Did the drug work? | IBD-04 trial: arms, `VISIT`, ERAP2 protein; `DRUG_RESPONSE_SQL` in `scripts/demo.py` | CRP ×0.42 on OMX-101 if ERAP2 is made, ×0.84 placebo, ×1.02 in G/G |
-| Scale | partitions, consumers, lakehouse path | [decisions.md](decisions.md#scale-path) |
+| Topic | Where it lives | Evidence | Try it live |
+| --- | --- | --- | --- |
+| Entity resolution | `harmonize.resolve`, masters from CTMS + biobank | S205 conflict quarantined; P001 in 6/6 feeds | `make try-wrong-person` |
+| Idempotency | sha256 file id, UUIDv5 ids, `unique (id, hash, reported_at)` | exact re-send → 1 file; re-ordered re-send → 0 rows | `make try-resend` |
+| Validation | `quality.py`, `ops.quarantine`, `api.participant_hold` | weight 72000 → SUSPECT_UNIT → corrected → hold cleared | `make try-bad-unit`, then `make try-fix-unit` |
+| Lineage | lineage columns + `api.lineage` + `/measurements/{id}/lineage` | value → raw row → file → S3 URI | `make try-lineage` |
+| Late or corrected data | retry loop; current = newest report | S159 waits, then loads; P003/S201 3 versions, current 2400 | `make try-late-sample`, `make try-correction` |
+| Fault tolerance | one transaction per file, reconcile, DLQ, RF=3 | `make chaos` matches golden | `make chaos` |
+| Schema evolution | contract versions chosen by header; unknown columns kept | Lab B v2 loads; unknown header → FAILED alone | `make try-bad-header` |
+| Replayability | immutable raw/, deterministic ids | `make replay`: identical checksum | `make replay` |
+| Security | roles, research view, audit log, S3 identities | 401/403, P014 hidden from research | `make try-access` |
+| Did the drug work? | IBD-04 trial: arms, `VISIT`, ERAP2 protein; `DRUG_RESPONSE_SQL` in `scripts/demo.py` | CRP ×0.42 on OMX-101 if ERAP2 is made, ×0.84 placebo, ×1.02 in G/G | <http://localhost:8501/omx101_trial> |
+| Scale | partitions, consumers, lakehouse path | [decisions.md](decisions.md#scale-path) |  |

@@ -45,6 +45,7 @@ You need Docker with about 6 GB of RAM. For a guided first run, with what you sh
 
 ```sh
 make demo       # clean run + one check per topic of the brief + replay (~3.5 min)
+make try        # live examples, one at a time: input -> output (e.g. make try-correction)
 make chaos      # same scenario while crashing workers and a broker (~3 min)
 make help       # every command
 ```
@@ -94,9 +95,10 @@ curl -s -H 'X-API-Key: research-key-dev' \
 │   ├── services/           lab simulator, dispatcher, analysis and monitor consumers
 │   ├── api/                FastAPI: SDTM endpoints, API keys -> roles, audit log
 │   └── dashboard/          Streamlit app; views/ = one file per page, workspace.py = LLM-built pages
-├── scripts/                generate_synthetic, fetch_open_data, demo (make demo), chaos (make chaos)
+├── scripts/                generate_synthetic, fetch_open_data, demo (make demo), examples (make try), chaos (make chaos)
 ├── data/
 │   ├── scenario/           what each simulated lab delivers on days 1-3, plus the golden checksum
+│   ├── examples/           one-file inputs for the live examples (make try-<name>)
 │   └── open/               provenance + sample map of the real DNA/RNA; raw/ is a git-ignored cache
 ├── workspace/              what LLMs built over MCP: pipelines/ (SQL) and dashboards/ (panels), YAML
 ├── config/                 SeaweedFS S3 identities, Postgres bootstrap SQL

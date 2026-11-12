@@ -81,7 +81,18 @@ The MCP server at `http://localhost:8001/mcp` lets any MCP client explore the on
 
 What an LLM saves lands as YAML files in `workspace/`. Its dashboards show up in the dashboard's Workspace section.
 
-## 6. Break it, then check nothing changed
+## 6. Try one thing at a time
+
+Each live example sends one small file from [data/examples/](data/examples/), waits for the pipeline, and prints the input, the output and what to look at:
+
+```sh
+make try                 # list the examples
+make try-correction      # a lab corrects a value: a new version, nothing overwritten
+```
+
+The others are `resend`, `bad-unit` then `fix-unit`, `late-sample`, `bad-header`, `wrong-person`, `lineage` and `access`. They add files to the scenario, so `make checksum` will differ afterwards; `make demo` returns to the golden state.
+
+## 7. Break it, then check nothing changed
 
 ```sh
 make chaos    # the scenario again, while crashing workers and a broker (~3 min)
@@ -90,7 +101,7 @@ make replay   # rebuild all derived data from the raw files (~1.5 min)
 
 `make chaos` must end with the same checksum as a clean run, and `make replay` must reproduce the same data.
 
-## 7. Test, stop, reset
+## 8. Test, stop, reset
 
 ```sh
 make test     # unit and integration tests (the platform must be up)

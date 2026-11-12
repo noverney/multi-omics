@@ -101,6 +101,7 @@ Every run is judged by one number: the **checksum of all derived data**. It cove
 | `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 16/16 checks ✅; replay identical ✅ |
 | `make chaos` | The same scenario under five failures (timeline below) | settles by itself; golden checksum ✅ |
 | `make replay` | Truncate everything derived, re-run every file from S3 under new idempotency keys | identical checksum ✅ |
+| `make try-<name>` | One behaviour at a time: delivers a small file from `data/examples/`, waits, prints its input and output | a LOOK AT line per example; `make try` lists all nine |
 
 The five failures in `make chaos`:
 - 30% random task crashes, which Prefect retries.
@@ -114,6 +115,7 @@ The five failures in `make chaos`:
 - Measurements are append-only rows, and "current" is a view.
 - Operational masters decide entity resolution.
 - Held rows are retried until a fixed point.
+- A newer valid report supersedes only a *bad* quarantined row. A row that is only waiting for master data always loads later, as history.
 - If the same content arrives twice, the earliest delivery's lineage is kept.
 
 How many rows wait for their master data depends on arrival order: in one run over 2,000 did. The checksum was still identical to the golden run.
