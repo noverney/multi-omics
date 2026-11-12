@@ -75,7 +75,7 @@ sequenceDiagram
   P->>DB: ONE transaction: raw rows, measurements, quarantine, retry pending, LOADED
   P->>K: outbox drain: harmonized.sdtm records + alerts
   P->>DB: mark sent, status PUBLISHED
-  Note over P,DB: every 60 s, reconcile re-runs files stuck before PUBLISHED<br/>(new key: attempts + 1; safe because everything is idempotent)
+  Note over P,DB: every 60 s, reconcile re-runs files stuck before PUBLISHED<br/>(new key: attempts + 1, safe because everything is idempotent)
 ```
 
 ## File status
