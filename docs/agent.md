@@ -55,10 +55,10 @@ The server's `instructions` (sent to every client when it connects) carry four r
 
 | Risk | Control |
 | --- | --- |
-| Seeing what research may not | The `agent_rw` role can SELECT only the research-safe views (`api.research_findings`, `api.sdtm_dm`, `api.study_arms`, `api.samples`, the ontology), the `research.*` results and its own workspace. It has no access to ops, raw, sci or quarantine, and held participants are invisible |
-| Destructive SQL | Each query runs in a read-only transaction, wrapped as a subquery, so a second statement or a write cannot even parse. The role has no write grant outside `workspace` |
+| Seeing what research may not | The `agent_rw` role can SELECT only the research-safe views (`api.research_findings`, `api.sdtm_dm`, `api.study_arms`, `api.samples`, the ontology), the `research.*` results and its own workspace. It has no access to ops, raw, sci or quarantine, and held participants are invisible in the findings |
+| Destructive SQL | Each query runs in a read-only transaction, wrapped as a subquery. That stops a plain second statement, but not a crafted one that closes the subquery and commits, so the real boundary is the role: it has no write grant outside `workspace`. Planned: the extended query protocol, and read-only plus a timeout set on the role itself |
 | Runaway queries | 5 s timeout and a 500-row cap; a pipeline build gets 30 s |
-| Unsafe output | Nothing an LLM writes runs as code. Pipelines are SQL views, dashboards are validated specs, names are checked identifiers, and files are only written under `workspace/` |
+| Unsafe output | Nothing an LLM writes runs as code. Pipelines are SQL views, dashboards are validated specs, names are checked identifiers (still to add for `drop_artifact`), and files are only written under `workspace/` |
 | Unattributed use | One bearer token per client (`AGENT_TOKENS`). Every call is logged in `ops.audit_log` with the client, tool, arguments, status and row count |
 
 ## Saved as a subtree

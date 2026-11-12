@@ -10,14 +10,14 @@ The data is synthetic, but the prototype treats it as real patient data.
 | No patient data on the bus | `lab.uploads` | Claim-check events carry an S3 URI and a sha256, never file contents |
 | Pseudonymous records downstream | `harmonized.sdtm`, API | Records are keyed by USUBJID only |
 | API keys → roles | `src/omics/api/main.py` | `research`: SDTM without held participants or QC failures. `ops`: also lineage, quarantine and files. Anyone else gets 401/403 |
-| Enforced in the data layer | `api.research_findings`, grants | The research DB role cannot read raw rows, quarantine or held participants, whatever the client does |
-| Least-privilege DB roles | `db/repeatable/900_grants.sql` | One role per service; readers see `api.*` views only; the API can only *append* to the audit log |
+| Rule in the data layer | `api.research_findings`, grants | Research reads findings through a view that drops held participants and QC failures, and its role cannot read raw rows or the quarantine. Not yet airtight: the API serves every key through one `api_ro` login that picks the view by role, and `research_rw` can still read the unfiltered `api.measurement_history` (to revoke) |
+| Least-privilege DB roles | `db/repeatable/900_grants.sql` | One role per service; readers see `api.*` views only; the API and the MCP server can only *append* to the audit log (the pipeline role can still update it; to revoke) |
 | Audit trail | `ops.audit_log` | Every API request, refused ones included: role, key fingerprint (never the key), path, status, rows returned |
 | Least-privilege S3 identities | `config/seaweedfs/s3.json` | Labs can only write to `raw/`; the pipeline reads `raw/` and writes `curated/`; analysis can only read `curated/` |
-| Immutable raw data | keys `raw/<lab>/<sha256>/<file>` | A delivery can never be overwritten; re-sends land on the same object |
+| Immutable raw data | keys `raw/<lab>/<sha256>/<file>` | Re-sends land on the same object, so a delivery is not overwritten. All labs share one write-only identity and there is no Object Lock yet, so this rests on the key convention plus the sha256 check |
 | Integrity check | `flows.fetch` | A file whose sha256 differs from the announced one is not processed |
-| Secrets kept out of git | `.env` (git-ignored) | Each container receives only its own credentials |
-| LLM access through one door | MCP server (`src/omics/agent/server.py`), role `agent_rw` | LLMs see research-safe views only, run one read-only SELECT at a time (5 s, 500 rows), and write only into the `workspace` schema and folder. One bearer token per client; every tool call is audited. Details in [agent.md](agent.md#guardrails-in-the-database-not-the-prompt) |
+| Secrets kept out of git | `.env` (git-ignored) | Real secrets never go in git; the committed defaults are for development only. Each container gets only its own credentials as environment variables (the development bind mount still exposes the repo, `.env` included) |
+| LLM access through one door | MCP server (`src/omics/agent/server.py`), role `agent_rw` | LLMs see research-safe views only (the `agent_rw` grants), queries run in a read-only transaction (5 s, 500 rows), and writes go only into the `workspace` schema and folder. The read-only wrapper is defence in depth, not the boundary: a crafted multi-statement query can escape it, so the grants are what hold. One bearer token per client; every tool call is audited. Details in [agent.md](agent.md#guardrails-in-the-database-not-the-prompt) |
 
 ## Production additions (documented, not built)
 
@@ -25,6 +25,7 @@ The data is synthetic, but the prototype treats it as real patient data.
 - **Broker access control:** Redpanda SASL/SCRAM, plus ACLs per consumer group.
 - **Encryption at rest:** S3 SSE-KMS, plus Object Lock (WORM) on `raw/`; Postgres encryption at rest.
 - **Per-study access:** row-level security in Postgres.
+- **Query guardrails on the role:** a query-only login with `default_transaction_read_only` and `statement_timeout`, and the extended query protocol so that one call is one statement.
 - **Authentication:** OAuth2/OIDC with short-lived tokens instead of static API keys; a secrets manager with rotation.
 - **Network:** segmentation, with only the API gateway exposed.
 - **Retention:** a policy that reconciles GDPR erasure with regulatory retention.

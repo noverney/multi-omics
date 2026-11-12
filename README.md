@@ -102,7 +102,7 @@ curl -s -H 'X-API-Key: research-key-dev' \
 ├── config/                 SeaweedFS S3 identities, Postgres bootstrap SQL
 ├── docs/                   architecture (Mermaid), standards, security, LLM access, decisions, runbook
 ├── tests/
-│   ├── unit/               pure logic and repo conventions (PEP 257, 1000-line limit)
+│   ├── unit/               pure logic and the 1000-line limit (ruff checks PEP 8 and PEP 257)
 │   └── integration/        API, MCP, demo and dashboard against the running stack
 ├── docker-compose.yml      the whole platform: infrastructure, services, simulators
 ├── Dockerfile              the single Python image (bcftools included)
