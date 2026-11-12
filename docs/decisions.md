@@ -24,10 +24,10 @@ Each entry gives the choice, why it was made, and what production would add.
 | **Current = newest *report*, not newest arrival** | A stale re-export that arrives late must not override a correction (verified with P003/S201) |
 | **Deterministic UUIDv5 ids and content hashes** | Re-sends are no-ops, replays are byte-identical (`make replay`, golden checksum) |
 | **Operational masters own identities** | Participants come from CTMS and samples from the biobank; labs' own claims are only cross-checked, so resolution is order-independent |
-| **Retry pending rows to a fixed point** | Late master data releases waiting rows automatically (in one run, 1261 rows waited, and the result was still identical) |
+| **Retry pending rows to a fixed point** | Late master data releases waiting rows automatically (how many rows wait depends on arrival order; in one run over 2,000 did, and the result was still identical) |
 | **Quarantine, never drop** | Every rejected row keeps its raw content and a reason; implausible values hold the participant out of research |
 | **NPX never converted; proteins keyed by UniProt; genes by Ensembl** | Relative units can't become absolute ones; names are ambiguous, stable IDs are not |
-| **Olink re-run on another date = replicate** | (sample, protein, run date) is the natural key; choosing the best replicate is an analysis decision |
+| **Olink re-run on another date = replicate** | (sample, protein, run date) is the natural key; choosing the best replicate is an analysis decision. The scenario plants no replicate runs; the key only allows for them |
 | **The drug trial is a new study, not a rewrite** | IBD-04 reuses every feed and rule; the 60 observational participants and their checks stay byte-identical (the trial has its own random stream) |
 | **A fictional drug on real genetics** | The DNA → RNA → protein chain is real (rs2248374 → ERAP2 decay); only the drug and its effect are planted, and both are labelled as simulation |
 | **Arms are reference data** | `CASE`/`CONTROL` was a CHECK constraint; trials need placebo and drug arms per study, validated against `reference/arms.csv` like any other code |

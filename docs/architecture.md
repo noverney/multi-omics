@@ -1,6 +1,6 @@
 # Architecture
 
-> **Status:** M0–M6 built: everything the brief asks for, plus the consumers, the dashboard and real open DNA/RNA data. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
+> **Status:** M0–M10 built: everything the brief asks for, plus the consumers, the dashboard, real open DNA/RNA data, a simulated drug trial and LLM access over MCP. `make demo` proves each topic, `make chaos` proves self-healing, and `make replay` proves replayability. The [plan and milestones](#milestones) are at the end.
 
 **Kafka carries messages, not data.**
 - Labs upload files to S3 and publish a small *claim-check* event (S3 URI + sha256).
@@ -24,7 +24,7 @@ flowchart LR
   labs -- "1 · PUT file" --> s3
   labs -- "2 · s3_uri + sha256" --> up
   up --> dsp["dispatcher"]
-  dsp -- "run_deployment<br/>idempotency_key = sha256" --> pf["Prefect<br/>ingest_file · reconcile"]
+  dsp -- "run_deployment<br/>idempotency_key = sha256:attempts" --> pf["Prefect<br/>ingest_file · reconcile"]
   pf <--> s3
   pf --> pg[("Postgres<br/>core · ops · raw · sci · api")]
   pf --> sdtm{{"harmonized.sdtm"}}
@@ -50,7 +50,7 @@ flowchart LR
 | Curated Parquet (`s3://curated/`) | Omics bulk: the full RNA matrix and VCF land here; only a gene/variant panel goes to Postgres |
 | Analysis consumer | Research domain: features, outliers and a case/control model per study, kept current from `harmonized.sdtm` and `alerts`; cis-eQTLs computed with Dask from the curated Parquet. Reads research-safe views only |
 | Monitor consumer | Operations domain: logs every upload, alert and dead letter; consumer lag per group; `LAB_SILENT` freshness alerts |
-| Streamlit dashboard | System state, data quality, cohort graph, lineage, analysis. Chart colors validated for color-blind safety |
+| Streamlit dashboard | System state, data quality, cohort graph, lineage, analysis, ontology, plus one page per LLM-built dashboard. Chart colors validated for color-blind safety |
 | MCP server (`agent`) | The LLM door: any MCP client explores the knowledge graph, queries research-safe views and saves pipelines (materialized views, refreshed by the Prefect `refresh-workspace` flow) and dashboards as YAML under `workspace/` ([agent](agent.md)) |
 | FastAPI | The unified access layer: SDTM records, history and lineage behind API keys and roles; every request audited ([security](security.md)) |
 
@@ -75,7 +75,7 @@ sequenceDiagram
   P->>DB: ONE transaction: raw rows, measurements, quarantine, retry pending, LOADED
   P->>K: outbox drain: harmonized.sdtm records + alerts
   P->>DB: mark sent, status PUBLISHED
-  Note over P,DB: every 60 s, reconcile re-runs files stuck before PUBLISHED<br/>(new key: attempts + 1; safe because everything is idempotent)
+  Note over P,DB: every 60 s, reconcile re-runs files stuck before PUBLISHED<br/>(new key: attempts + 1, safe because everything is idempotent)
 ```
 
 ## File status
@@ -98,7 +98,7 @@ Every run is judged by one number: the **checksum of all derived data**. It cove
 
 | Command | What happens | Verified result |
 | --- | --- | --- |
-| `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 11/11 checks ✅; replay identical ✅ |
+| `make demo` | Clean run of the 3-day scenario, then a check per topic of the brief, then a replay | 16/16 checks ✅; replay identical ✅ |
 | `make chaos` | The same scenario under five failures (timeline below) | settles by itself; golden checksum ✅ |
 | `make replay` | Truncate everything derived, re-run every file from S3 under new idempotency keys | identical checksum ✅ |
 
@@ -116,7 +116,7 @@ The five failures in `make chaos`:
 - Held rows are retried until a fixed point.
 - If the same content arrives twice, the earliest delivery's lineage is kept.
 
-In one demo run the labs beat the clinic, so 601 rows waited for their master data. The checksum was still identical to the golden run, in which almost nothing waited.
+How many rows wait for their master data depends on arrival order: in one run over 2,000 did. The checksum was still identical to the golden run.
 
 ## Multi-omics with open data
 
@@ -129,7 +129,7 @@ In one demo run the labs beat the clinic, so 601 rows waited for their master da
   - Parsers for a wide expression matrix and a VCF; genotypes become a categorical value (call as text, ALT dosage as number).
   - The full omics files go to S3 as Parquet; only the gene/variant panel goes to Postgres.
   - The analysis consumer reads the Parquet with Dask and joins DNA and RNA through `api.samples`.
-- **The result:** the known ERAP2 eQTL is recovered, rs2248374: **r = −0.89, p = 3e-21**, about −16.6 nRPKM per G allele. The other promoter variants are null in these cells, and CRP is absent from the RNA because it is made in the liver.
+- **The result:** the known ERAP2 eQTL is recovered, rs2248374: **r = −0.83, p = 2e-26, n = 99** (P014 is on hold), about −15.0 nRPKM per G allele. The other promoter variants are null in these cells, and CRP is absent from the RNA because it is made in the liver.
 
 ## Drug trial: did OMX-101 work?
 
